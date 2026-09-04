@@ -39,7 +39,7 @@ export default async function IndisponibilitesPage({
           <p className="font-sans text-[10px] uppercase tracking-widest text-teal font-semibold">Disponibilité</p>
           <h1 className="font-display text-[2.4rem] text-dark font-light leading-tight mt-0.5">Mes indispos</h1>
           <p className="font-sans text-sm text-dark/50 mt-2 leading-snug">
-            Indique tes dates d&rsquo;absence — tu ne seras pas convoqué·e sur ces périodes.
+            Indique tes dates d&rsquo;absence — tu ne seras pas programmé(e) sur ces périodes.
           </p>
         </div>
 
