@@ -39,32 +39,33 @@ export function ChordChart({ chart, originalKey, initialKey, songId, arrangement
       {/* Barre d'outils */}
       <div className="bg-white rounded-2xl border border-teal/20 p-4 space-y-3">
         {/* Ligne : tonalité + actions */}
-        <div className="flex items-center gap-2">
-          <span className="font-sans text-xs text-dark/40 uppercase tracking-wide">Tonalité</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-sans text-xs text-dark/40 uppercase tracking-wide shrink-0">Tonalité</span>
           {semitones !== 0 && (
-            <span className="font-sans text-xs text-teal bg-teal/10 px-2 py-0.5 rounded-full">
+            <span className="font-sans text-xs text-teal bg-teal/10 px-2 py-0.5 rounded-full shrink-0">
               {semitones > 6 ? `−${12 - semitones}` : `+${semitones}`} demi-tons
             </span>
           )}
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
             {/* Masquer accords */}
             <button
               onClick={() => setShowChords(v => !v)}
               className={`
-                font-sans text-xs px-3 py-1.5 rounded-lg border transition-colors
+                font-sans text-xs px-2.5 py-1.5 rounded-lg border transition-colors inline-flex items-center gap-1
                 ${showChords
                   ? 'border-teal/20 text-dark/50 hover:border-teal/40 hover:text-dark'
                   : 'border-teal bg-teal/10 text-teal font-medium'}
               `}
             >
-              <><IconMusicalNote className="w-3.5 h-3.5 shrink-0" /> {showChords ? 'Accords visibles' : 'Accords masqués'}</>
+              <IconMusicalNote className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:inline">{showChords ? 'Accords visibles' : 'Accords masqués'}</span>
             </button>
 
             {/* PDF */}
             <button
               onClick={openPrint}
-              className="font-sans text-xs px-3 py-1.5 rounded-lg border border-teal/20 text-dark/50 hover:border-teal/40 hover:text-dark transition-colors"
+              className="font-sans text-xs px-2.5 py-1.5 rounded-lg border border-teal/20 text-dark/50 hover:border-teal/40 hover:text-dark transition-colors"
             >
               PDF
             </button>
@@ -101,8 +102,8 @@ export function ChordChart({ chart, originalKey, initialKey, songId, arrangement
       </div>
 
       {/* Grille d'accords */}
-      <div className="bg-white rounded-2xl border border-teal/20 p-5 overflow-x-auto">
-        <pre className="font-mono text-sm leading-relaxed whitespace-pre">
+      <div className="bg-white rounded-2xl border border-teal/20 p-5 overflow-x-auto max-w-full">
+        <pre className="font-mono text-sm leading-relaxed whitespace-pre min-w-max">
           {transposed.split('\n').map((line, i) => {
             if (!line.trim()) return <span key={i}>{'\n'}</span>
 

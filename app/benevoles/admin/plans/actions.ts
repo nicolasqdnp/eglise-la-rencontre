@@ -586,6 +586,18 @@ export async function addPlanSong(formData: FormData) {
   revalidatePath(`/benevoles/admin/plans/${planId}`)
 }
 
+export async function reorderPlanSongs(planId: string, orderedIds: string[]) {
+  const { admin } = await requireAdmin()
+
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      admin.from('plan_songs').update({ order_index: index }).eq('id', id)
+    )
+  )
+
+  revalidatePath(`/benevoles/admin/plans/${planId}`)
+}
+
 export async function removePlanSong(formData: FormData) {
   const { admin } = await requireAdmin()
   const planSongId = formData.get('plan_song_id') as string
