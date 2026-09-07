@@ -33,8 +33,9 @@ self.addEventListener('notificationclick', (event) => {
   )
 })
 
-const STATIC_CACHE = 'static-v1'
-const OFFLINE_URL  = '/offline.html'
+const CACHE_VERSION = 'v3'
+const STATIC_CACHE  = `static-${CACHE_VERSION}`
+const OFFLINE_URL   = '/offline.html'
 
 // Pré-cache la page offline + l'icône à l'installation
 self.addEventListener('install', (event) => {
@@ -46,9 +47,17 @@ self.addEventListener('install', (event) => {
   self.skipWaiting()
 })
 
-// Activation immédiate (pas d'attente de fermeture des anciens onglets)
+// Activation immédiate + suppression des anciennes caches
 self.addEventListener('activate', (event) => {
-  event.waitUntil(clients.claim())
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys
+          .filter((key) => key.startsWith('static-') && key !== STATIC_CACHE)
+          .map((key) => caches.delete(key))
+      )
+    ).then(() => clients.claim())
+  )
 })
 
 self.addEventListener('fetch', (event) => {
