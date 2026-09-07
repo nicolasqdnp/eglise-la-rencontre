@@ -143,6 +143,52 @@ export function SongsSection({ planId, planSongs, allSongs }: Props) {
     }
   }
 
+  // ── Mouse drag (HTML5 Drag & Drop API) ─────────────────────────
+
+  function handleMouseDragStart(e: React.DragEvent, id: string) {
+    e.dataTransfer.effectAllowed = 'move'
+    dragIdRef.current = id
+    setDraggingId(id)
+  }
+
+  function handleMouseDragOver(e: React.DragEvent, i: number) {
+    if (!dragIdRef.current) return
+    e.preventDefault()
+    const rect   = e.currentTarget.getBoundingClientRect()
+    const newIdx = e.clientY < rect.top + rect.height / 2 ? i : i + 1
+    if (dragOverIndexRef.current !== newIdx) {
+      dragOverIndexRef.current = newIdx
+      setDragOverIndex(newIdx)
+    }
+  }
+
+  function commitMouseReorder() {
+    const id    = dragIdRef.current
+    const toIdx = dragOverIndexRef.current
+    if (!id || toIdx === null) { handleMouseDragEnd(); return }
+
+    const songs   = optimisticSongsRef.current
+    const fromIdx = songs.findIndex(ps => ps.id === id)
+
+    if (fromIdx !== -1 && fromIdx !== toIdx && fromIdx + 1 !== toIdx) {
+      const newOrder  = [...songs]
+      const [item]    = newOrder.splice(fromIdx, 1)
+      const adjustedTo = toIdx > fromIdx ? toIdx - 1 : toIdx
+      newOrder.splice(adjustedTo, 0, item)
+      setOptimisticSongs(newOrder)
+      optimisticSongsRef.current = newOrder
+      startTransition(() => reorderPlanSongs(planId, newOrder.map(ps => ps.id)))
+    }
+    handleMouseDragEnd()
+  }
+
+  function handleMouseDragEnd() {
+    dragIdRef.current        = null
+    dragOverIndexRef.current = null
+    setDraggingId(null)
+    setDragOverIndex(null)
+  }
+
   const active = optimisticSongs.find(ps => ps.id === activeId) ?? null
   const isOpen = active !== null
 
@@ -210,6 +256,11 @@ export function SongsSection({ planId, planSongs, allSongs }: Props) {
 
                 <div
                   ref={el => { rowRefs.current[i] = el }}
+                  draggable={true}
+                  onDragStart={(e) => handleMouseDragStart(e, ps.id)}
+                  onDragOver={(e)  => handleMouseDragOver(e, i)}
+                  onDrop={(e)      => { e.preventDefault(); commitMouseReorder() }}
+                  onDragEnd={handleMouseDragEnd}
                   className={`flex items-center gap-2 px-3 py-2.5 transition-colors select-none ${
                     isDragged
                       ? 'opacity-40 bg-teal/5'
@@ -279,10 +330,24 @@ export function SongsSection({ planId, planSongs, allSongs }: Props) {
             )
           })}
 
-          {/* Indicateur de dépôt en fin de liste */}
-          {draggingId && dragOverIndex === optimisticSongs.length && (
-            <div className="h-0.5 bg-teal mx-3 rounded-full my-1" />
-          )}
+          {/* Zone de dépôt en fin de liste + indicateur */}
+          <div
+            className="h-4"
+            onDragOver={(e) => {
+              if (!dragIdRef.current) return
+              e.preventDefault()
+              const newIdx = optimisticSongs.length
+              if (dragOverIndexRef.current !== newIdx) {
+                dragOverIndexRef.current = newIdx
+                setDragOverIndex(newIdx)
+              }
+            }}
+            onDrop={(e) => { e.preventDefault(); commitMouseReorder() }}
+          >
+            {draggingId && dragOverIndex === optimisticSongs.length && (
+              <div className="h-0.5 bg-teal mx-3 rounded-full mt-1" />
+            )}
+          </div>
         </div>
 
         {/* Formulaire d'ajout */}
