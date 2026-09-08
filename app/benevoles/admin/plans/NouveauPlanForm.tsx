@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { createPlan, createPlans } from './actions'
+import { createPlanUnified } from './actions'
 
 type Team = { id: string; name: string }
 
@@ -19,7 +19,6 @@ const TYPES = {
 } as const
 
 type PlanType = keyof typeof TYPES
-
 
 function pad(n: number) { return String(n).padStart(2, '0') }
 
@@ -51,12 +50,12 @@ function formatDateLabel(dt: string) {
 }
 
 export function NouveauPlanForm({ teams, error }: { teams: Team[]; error?: string }) {
-  const [planType, setPlanType] = useState<PlanType>('sunday_service')
-  const [title, setTitle]       = useState<string>(TYPES.sunday_service.defaultTitle)
-  const [dateMode, setDateMode] = useState<'single' | 'multi'>('single')
+  const [planType,   setPlanType]   = useState<PlanType>('sunday_service')
+  const [title,      setTitle]      = useState<string>(TYPES.sunday_service.defaultTitle)
+  const [dateMode,   setDateMode]   = useState<'single' | 'multi'>('single')
   const [singleDate, setSingleDate] = useState(defaultDate('sunday_service'))
-  const [dates, setDates]       = useState<string[]>([])
-  const [newDate, setNewDate]   = useState('')
+  const [dates,      setDates]      = useState<string[]>([])
+  const [newDate,    setNewDate]    = useState('')
   const [recurStart, setRecurStart] = useState(defaultDate('sunday_service'))
   const [recurCount, setRecurCount] = useState(4)
 
@@ -64,6 +63,14 @@ export function NouveauPlanForm({ teams, error }: { teams: Team[]; error?: strin
     setPlanType(t)
     setTitle(TYPES[t].defaultTitle)
     setSingleDate(defaultDate(t))
+    setRecurStart(defaultDate(t))
+  }
+
+  function switchDateMode(mode: 'single' | 'multi') {
+    setDateMode(mode)
+    // Réinitialise les dates accumulées quand on repasse en mode unique
+    // pour éviter de créer plusieurs plans par accident
+    if (mode === 'single') setDates([])
   }
 
   function addDate() {
@@ -90,11 +97,11 @@ export function NouveauPlanForm({ teams, error }: { teams: Team[]; error?: strin
 
   const accentColor = TYPE_COLORS[planType]
   const isMulti = dateMode === 'multi'
+  const canSubmit = isMulti ? dates.length > 0 : !!singleDate
 
   return (
     <div className="min-h-screen bg-sand">
 
-      {/* Header on sand */}
       <div className="max-w-lg mx-auto px-4 md:px-6 pt-6 pb-0">
         <Link
           href="/benevoles/admin/plans"
@@ -125,10 +132,12 @@ export function NouveauPlanForm({ teams, error }: { teams: Team[]; error?: strin
           ))}
         </div>
 
-        <form action={isMulti ? createPlans : createPlan} className="space-y-4">
-          <input type="hidden" name="plan_type" value={planType} />
+        {/* Un seul form avec action unifiée + champ date_mode */}
+        <form action={createPlanUnified} className="space-y-4">
+          <input type="hidden" name="plan_type"  value={planType} />
+          {/* date_mode est lu par createPlanUnified pour savoir quelle branche prendre */}
+          <input type="hidden" name="date_mode"  value={isMulti ? 'multi' : 'single'} />
 
-          {/* Main card */}
           <div className="bg-white rounded-2xl border border-dark/8 shadow-sm p-5 space-y-5">
 
             {/* Titre */}
@@ -146,7 +155,7 @@ export function NouveauPlanForm({ teams, error }: { teams: Team[]; error?: strin
 
             {/* Date mode + inputs */}
             <div>
-              <label className="block font-sans text-[10px] text-dark/40 uppercase tracking-widest mb-1.5">Dates</label>
+              <label className="block font-sans text-[10px] text-dark/40 uppercase tracking-widest mb-1.5">Date(s)</label>
 
               {/* Toggle */}
               <div className="flex rounded-xl overflow-hidden border border-dark/10 mb-3">
@@ -154,7 +163,7 @@ export function NouveauPlanForm({ teams, error }: { teams: Team[]; error?: strin
                   <button
                     key={mode}
                     type="button"
-                    onClick={() => setDateMode(mode)}
+                    onClick={() => switchDateMode(mode)}
                     className={`flex-1 py-2 font-sans text-xs font-medium transition-colors ${
                       dateMode === mode ? 'bg-dark text-white' : 'bg-white text-dark/40 hover:text-dark'
                     } ${i > 0 ? 'border-l border-dark/10' : ''}`}
@@ -164,7 +173,7 @@ export function NouveauPlanForm({ teams, error }: { teams: Team[]; error?: strin
                 ))}
               </div>
 
-              {/* Single date */}
+              {/* Champ date unique */}
               {!isMulti && (
                 <input
                   name="service_date"
@@ -176,11 +185,11 @@ export function NouveauPlanForm({ teams, error }: { teams: Team[]; error?: strin
                 />
               )}
 
-              {/* Multi-date */}
+              {/* Multi-dates */}
               {isMulti && (
                 <div className="space-y-3">
 
-                  {/* Add one date */}
+                  {/* Ajouter une date manuellement */}
                   <div className="flex gap-2">
                     <input
                       type="datetime-local"
@@ -191,21 +200,21 @@ export function NouveauPlanForm({ teams, error }: { teams: Team[]; error?: strin
                     <button
                       type="button"
                       onClick={addDate}
-                      className="shrink-0 px-4 py-2 rounded-xl border font-sans text-sm font-medium transition-colors hover:bg-coral/5"
+                      disabled={!newDate}
+                      className="shrink-0 px-4 py-2 rounded-xl border font-sans text-sm font-medium transition-colors hover:bg-coral/5 disabled:opacity-40"
                       style={{ borderColor: '#E2693C', color: '#E2693C' }}
                     >
                       + Ajouter
                     </button>
                   </div>
 
-                  {/* Dashed separator */}
+                  {/* Générateur de récurrence */}
                   <div className="flex items-center gap-2">
                     <div className="flex-1 border-t border-dashed border-dark/15" />
-                    <span className="font-sans text-[9px] text-dark/30 uppercase tracking-widest shrink-0">ou générer</span>
+                    <span className="font-sans text-[9px] text-dark/30 uppercase tracking-widest shrink-0">ou générer chaque semaine</span>
                     <div className="flex-1 border-t border-dashed border-dark/15" />
                   </div>
 
-                  {/* Recurrence generator */}
                   <div className="flex gap-2 items-center">
                     <input
                       type="datetime-local"
@@ -213,32 +222,36 @@ export function NouveauPlanForm({ teams, error }: { teams: Team[]; error?: strin
                       onChange={e => setRecurStart(e.target.value)}
                       className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-dark/10 bg-sand text-dark font-sans text-sm focus:outline-none"
                     />
-                    <input
-                      type="number"
-                      min={1}
-                      max={52}
-                      value={recurCount}
-                      onChange={e => setRecurCount(Math.max(1, Number(e.target.value)))}
-                      className="w-14 shrink-0 px-2 py-2 rounded-xl border border-dark/10 bg-sand text-dark font-sans text-sm focus:outline-none text-center"
-                    />
+                    <div className="flex items-center gap-1 shrink-0">
+                      <input
+                        type="number"
+                        min={1}
+                        max={52}
+                        value={recurCount}
+                        onChange={e => setRecurCount(Math.max(1, Number(e.target.value)))}
+                        className="w-14 px-2 py-2 rounded-xl border border-dark/10 bg-sand text-dark font-sans text-sm focus:outline-none text-center"
+                      />
+                      <span className="font-sans text-xs text-dark/40 whitespace-nowrap">sem.</span>
+                    </div>
                     <button
                       type="button"
                       onClick={generateDates}
-                      className="shrink-0 px-3 py-2 rounded-xl border border-dark/10 bg-white font-sans text-sm text-dark/60 hover:text-dark transition-colors whitespace-nowrap"
+                      className="shrink-0 px-3 py-2 rounded-xl border border-dark/10 bg-white font-sans text-sm text-dark/60 hover:text-dark transition-colors"
                     >
                       Générer ↺
                     </button>
                   </div>
 
-                  {/* Hidden inputs */}
+                  {/* Hidden inputs pour chaque date sélectionnée */}
                   {dates.map(d => (
                     <input key={d} type="hidden" name="service_dates" value={d} />
                   ))}
 
-                  {/* Date list */}
+                  {/* Liste des dates */}
                   {dates.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-dark/15 py-8 text-center">
                       <p className="font-sans text-xs text-dark/30">Aucune date ajoutée</p>
+                      <p className="font-sans text-[10px] text-dark/20 mt-1">Ajoutez des dates une par une ou générez une série</p>
                     </div>
                   ) : (
                     <div className="rounded-xl border border-dark/8 overflow-hidden">
@@ -252,9 +265,7 @@ export function NouveauPlanForm({ teams, error }: { teams: Team[]; error?: strin
                             type="button"
                             onClick={() => removeDate(d)}
                             className="text-dark/25 hover:text-red-400 transition-colors text-xl leading-none shrink-0"
-                          >
-                            ×
-                          </button>
+                          >×</button>
                         </div>
                       ))}
                     </div>
@@ -293,14 +304,14 @@ export function NouveauPlanForm({ teams, error }: { teams: Team[]; error?: strin
             </div>
           </div>
 
-          {/* Summary bar */}
+          {/* Récapitulatif multi-dates */}
           {isMulti && dates.length > 0 && (
             <div
               className="rounded-2xl px-5 py-3 text-center"
               style={{ backgroundColor: `${accentColor}18` }}
             >
               <p className="font-sans text-sm font-medium" style={{ color: accentColor }}>
-                {dates.length} service{dates.length > 1 ? 's' : ''} «&nbsp;{title}&nbsp;» seront créés en une fois
+                {dates.length} service{dates.length > 1 ? 's' : ''} «&nbsp;{title}&nbsp;» seront créés
               </p>
             </div>
           )}
@@ -309,10 +320,9 @@ export function NouveauPlanForm({ teams, error }: { teams: Team[]; error?: strin
             <p className="font-sans text-sm text-red-500 text-center">{error}</p>
           )}
 
-          {/* Submit */}
           <button
             type="submit"
-            disabled={isMulti && dates.length === 0}
+            disabled={!canSubmit}
             className="w-full py-3.5 rounded-2xl font-sans text-sm font-semibold text-white transition-opacity disabled:opacity-40"
             style={{ backgroundColor: accentColor }}
           >

@@ -17,6 +17,7 @@ import { PlanWorkspace } from '../PlanWorkspace'
 import { MyAssignmentPanel } from '../RespondAssignmentButtons'
 import { RemoveAssignmentButton } from '../RemoveAssignmentButton'
 import { MobileSongsList } from './MobileSongsList'
+import { AddPlanDateForm } from './AddPlanDateForm'
 
 const PLAN_TYPE_LABELS: Record<string, string> = {
   sunday_service: 'Culte',
@@ -130,6 +131,13 @@ export default async function PlanDetailPage({
                     positionName={myAssignment.positions?.name ?? null}
                     initialStatus={myAssignment.status as 'pending' | 'confirmed' | 'declined'}
                   />
+                </div>
+              )}
+
+              {/* Planifier une autre date */}
+              {canManage && (
+                <div className="mt-3 pt-3 border-t border-white/15">
+                  <AddPlanDateForm planId={id} currentServiceDate={plan.service_date} />
                 </div>
               )}
             </div>

@@ -14,6 +14,7 @@ import AnnoncesSection from './[id]/AnnoncesSection'
 import SermonSection from './[id]/SermonSection'
 import VideoSection from './[id]/VideoSection'
 import ShareButton from './[id]/ShareButton'
+import { AddPlanDateForm } from './[id]/AddPlanDateForm'
 
 type Props = {
   planId: string
@@ -162,6 +163,11 @@ export function AssignmentBoard({ planId, detail, fillKey, isAdmin, flashError, 
               </form>
             )}
           </div>
+        </div>
+
+        {/* Planifier une autre date */}
+        <div className="mt-3 pt-3 border-t border-white/20">
+          <AddPlanDateForm planId={planId} currentServiceDate={plan.service_date} />
         </div>
 
         {totalPositions > 0 && (

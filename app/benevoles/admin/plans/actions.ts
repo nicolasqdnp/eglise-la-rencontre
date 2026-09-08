@@ -89,6 +89,15 @@ export async function createPlan(formData: FormData) {
   redirect(`/benevoles/admin/plans/${data.id}`)
 }
 
+/** Crée un ou plusieurs plans depuis un formulaire unifié (champ date_mode = "single" | "multi"). */
+export async function createPlanUnified(formData: FormData) {
+  const dateMode = formData.get('date_mode') as string
+  if (dateMode === 'multi') {
+    return createPlans(formData)
+  }
+  return createPlan(formData)
+}
+
 export async function createPlans(formData: FormData) {
   const { admin, church_id } = await requireAdmin()
   const title      = formData.get('title') as string
@@ -107,6 +116,38 @@ export async function createPlans(formData: FormData) {
 
   if (error) redirect(`/benevoles/admin/plans/nouveau?error=${encodeURIComponent(error.message)}`)
   redirect('/benevoles/admin/plans')
+}
+
+/** Crée un nouveau plan en copiant le titre, le type, l'équipe et les notes d'un plan existant,
+ *  avec une nouvelle date. Redirige vers le nouveau plan. */
+export async function duplicatePlanToDate(formData: FormData) {
+  const { admin, church_id } = await requireAdmin()
+  const fromPlanId  = formData.get('from_plan_id') as string
+  const serviceDate = formData.get('service_date') as string
+
+  const { data: source, error: srcError } = await admin
+    .from('plans')
+    .select('title, plan_type, team_id, notes')
+    .eq('id', fromPlanId)
+    .single()
+
+  if (srcError || !source) redirect('/benevoles/admin/plans?error=not_found')
+
+  const { data, error } = await admin
+    .from('plans')
+    .insert({
+      title:        source.title,
+      plan_type:    source.plan_type,
+      team_id:      source.team_id,
+      notes:        source.notes,
+      service_date: serviceDate,
+      church_id,
+    })
+    .select('id')
+    .single()
+
+  if (error) redirect(`/benevoles/admin/plans?error=${encodeURIComponent(error.message)}`)
+  redirect(`/benevoles/admin/plans/${data.id}`)
 }
 
 export async function deletePlan(formData: FormData) {
