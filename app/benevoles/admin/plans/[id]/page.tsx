@@ -16,6 +16,7 @@ import { getPlanDetail, INVITE_EXT_ID } from '../getPlanDetail'
 import { PlanWorkspace } from '../PlanWorkspace'
 import { MyAssignmentPanel } from '../RespondAssignmentButtons'
 import { RemoveAssignmentButton } from '../RemoveAssignmentButton'
+import { MobileSongsList } from './MobileSongsList'
 
 const PLAN_TYPE_LABELS: Record<string, string> = {
   sunday_service: 'Culte',
@@ -310,25 +311,7 @@ export default async function PlanDetailPage({
                   </Link>
                 )}
               </div>
-              <div className="divide-y divide-teal/8">
-                {(planSongs as unknown[]).length === 0 && (
-                  <p className="px-4 py-4 font-sans text-xs text-dark/40 italic text-center">Aucun chant ajouté</p>
-                )}
-                {(planSongs as any[]).map((ps, i) => (
-                  <div key={ps.id} className="px-4 py-3 flex items-center gap-3">
-                    <span className="font-sans text-xs text-dark/25 tabular-nums w-5 text-right shrink-0">{i + 1}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-sans text-sm text-dark font-medium truncate">{ps.songs?.title ?? '—'}</p>
-                      {ps.key_selected && (
-                        <p className="font-sans text-xs text-dark/35 mt-0.5">Tonalité : {ps.key_selected}</p>
-                      )}
-                    </div>
-                    {ps.songs?.id && (
-                      <Link href={`/benevoles/chants/${ps.songs.id}`} className="text-dark/25 hover:text-teal transition-colors font-sans text-sm shrink-0 p-1">→</Link>
-                    )}
-                  </div>
-                ))}
-              </div>
+              <MobileSongsList planId={id} planSongs={planSongs as any} />
               <div className="border-t border-teal/10 px-4 py-3 bg-teal-50/20">
                 <AddSongForm planId={id} songs={allSongs as any} />
               </div>
