@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { deletePlan, sendSingleInvitation } from './actions'
+import { deletePlan, sendSingleInvitation, excludePlanPosition } from './actions'
 import { PlanTimeEditor } from './PlanTimeEditor'
 import { RemoveAssignmentButton } from './RemoveAssignmentButton'
 import { INVITE_EXT_ID, type PlanDetail, type TeamDetail } from './getPlanDetail'
@@ -14,6 +14,8 @@ import AnnoncesSection from './[id]/AnnoncesSection'
 import SermonSection from './[id]/SermonSection'
 import VideoSection from './[id]/VideoSection'
 import ShareButton from './[id]/ShareButton'
+import { AddPlanDateForm } from './[id]/AddPlanDateForm'
+import { PlanTeamsManager } from './[id]/PlanTeamsManager'
 
 type Props = {
   planId: string
@@ -164,6 +166,18 @@ export function AssignmentBoard({ planId, detail, fillKey, isAdmin, flashError, 
           </div>
         </div>
 
+        {/* Équipes + planifier une autre date */}
+        <div className="mt-3 pt-3 border-t border-white/20 space-y-2">
+          {!isRehearsal && (
+            <PlanTeamsManager
+              planId={planId}
+              teams={detail.availableTeams}
+              currentTeamIds={plan.team_ids ?? null}
+            />
+          )}
+          <AddPlanDateForm planId={planId} currentServiceDate={plan.service_date} />
+        </div>
+
         {totalPositions > 0 && (
           <div className="mt-4">
             <div className="flex items-center justify-between text-xs font-sans text-white/80 mb-1.5">
@@ -183,10 +197,22 @@ export function AssignmentBoard({ planId, detail, fillKey, isAdmin, flashError, 
         <div className="bg-teal/10 rounded-xl px-5 py-3 font-sans text-sm text-dark/70">{plan.notes}</div>
       )}
 
+      {/* Chants */}
+      <div className="space-y-2">
+        {planSongs.length > 0 && (
+          <div className="flex justify-end">
+            <CopySetlistButton planId={planId} songCount={planSongs.length} />
+          </div>
+        )}
+        <SongsSection planId={planId} planSongs={planSongs as any} allSongs={allSongs as any} />
+      </div>
+
       {/* Équipes — masquées pour les répétitions */}
       {!isRehearsal && visibleTeams.map(team => {
+        const excludedIds = new Set(plan.excluded_position_ids ?? [])
         const filledPositionIds = new Set(team.assignments.map(a => a.position_id).filter(Boolean) as string[])
-        const openPositions = team.positions.filter(p => !filledPositionIds.has(p.id))
+        const openPositions = team.positions.filter(p => !filledPositionIds.has(p.id) && !excludedIds.has(p.id))
+        const excludedPositions = team.positions.filter(p => excludedIds.has(p.id))
         // Postes déjà pourvus mais qui acceptent plusieurs bénévoles (ex : Chorale, Choriste)
         const multiPositions = team.positions.filter(p => p.allow_multiple && filledPositionIds.has(p.id))
         const noNamedPositions = team.positions.length === 0
@@ -200,7 +226,7 @@ export function AssignmentBoard({ planId, detail, fillKey, isAdmin, flashError, 
               )}
             </div>
 
-            {team.assignments.length === 0 && openPositions.length === 0 && !noNamedPositions && (
+            {team.assignments.length === 0 && openPositions.length === 0 && !noNamedPositions && excludedPositions.length === 0 && (
               <p className="font-sans text-xs text-dark/40 italic px-1">Aucun bénévole</p>
             )}
 
@@ -209,12 +235,25 @@ export function AssignmentBoard({ planId, detail, fillKey, isAdmin, flashError, 
                 <PersonCard key={a.id} planId={planId} a={a} returnTo={returnTo} />
               ))}
               {openPositions.map(pos => (
-                <OpenSlotCard
-                  key={pos.id}
-                  label={pos.name}
-                  onClick={() => onSlotClick(`pos:${pos.id}`)}
-                  active={fillKey === `pos:${pos.id}`}
-                />
+                <div key={pos.id} className="relative group">
+                  <OpenSlotCard
+                    label={pos.name}
+                    onClick={() => onSlotClick(`pos:${pos.id}`)}
+                    active={fillKey === `pos:${pos.id}`}
+                  />
+                  {isAdmin && (
+                    <form action={excludePlanPosition} className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <input type="hidden" name="plan_id" value={planId} />
+                      <input type="hidden" name="position_id" value={pos.id} />
+                      <input type="hidden" name="exclude" value="1" />
+                      <button
+                        type="submit"
+                        title="Masquer ce poste pour ce service"
+                        className="w-5 h-5 rounded-full bg-white shadow-sm border border-dark/10 text-dark/30 hover:text-red-400 hover:border-red-200 flex items-center justify-center text-xs font-bold transition-colors"
+                      >×</button>
+                    </form>
+                  )}
+                </div>
               ))}
               {multiPositions.map(pos => (
                 <OpenSlotCard
@@ -233,19 +272,29 @@ export function AssignmentBoard({ planId, detail, fillKey, isAdmin, flashError, 
                 />
               )}
             </div>
+
+            {/* Postes masqués — restaurables */}
+            {isAdmin && excludedPositions.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {excludedPositions.map(pos => (
+                  <form key={pos.id} action={excludePlanPosition} className="inline-flex">
+                    <input type="hidden" name="plan_id" value={planId} />
+                    <input type="hidden" name="position_id" value={pos.id} />
+                    <input type="hidden" name="exclude" value="0" />
+                    <button
+                      type="submit"
+                      title="Réafficher ce poste"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-dashed border-dark/20 text-dark/30 hover:text-dark/60 hover:border-dark/40 font-sans text-[10px] transition-colors"
+                    >
+                      + {pos.name}
+                    </button>
+                  </form>
+                ))}
+              </div>
+            )}
           </section>
         )
       })}
-
-      {/* Chants */}
-      <div className="space-y-2">
-        {planSongs.length > 0 && (
-          <div className="flex justify-end">
-            <CopySetlistButton planId={planId} songCount={planSongs.length} />
-          </div>
-        )}
-        <SongsSection planId={planId} planSongs={planSongs as any} allSongs={allSongs as any} />
-      </div>
 
       {/* Annonces */}
       <section className="bg-white rounded-2xl border border-teal/20 overflow-hidden">

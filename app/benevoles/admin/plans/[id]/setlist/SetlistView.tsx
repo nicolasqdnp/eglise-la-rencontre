@@ -204,7 +204,7 @@ export function SetlistView({ planId, planTitle, songs, announcements, sermons, 
 
       {/* ── Partition (droite) ─────────────────────────────────────── */}
       <main className={`
-        flex-1 overflow-y-auto
+        flex-1 overflow-y-auto min-w-0
         ${mobileView === 'list' ? 'hidden md:block' : 'block'}
       `}>
 
@@ -223,7 +223,7 @@ export function SetlistView({ planId, planTitle, songs, announcements, sermons, 
           </div>
 
           {/* Scroll continu : tous les chants empilés */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
             {songs.map((s, idx) => (
               <div
                 key={s.planSongId}

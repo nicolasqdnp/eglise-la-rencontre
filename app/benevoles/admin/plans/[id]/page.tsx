@@ -6,16 +6,19 @@ import { IconEnvelope, IconMusicalNote, IconPlay, IconProjector, IconWarning } f
 import { StatusDot } from '../../../_components/StatusDot'
 import { FlashMessage } from '../../../_components/FlashMessage'
 import { AddAssignmentForm } from './AddAssignmentForm'
+import { AddSongForm } from './AddSongForm'
 import AnnoncesSection from './AnnoncesSection'
 import SermonSection from './SermonSection'
 import VideoSection from './VideoSection'
 import ShareButton from './ShareButton'
 import { MobileOpenSlot } from './MobileOpenSlot'
-import { AddSongForm } from './AddSongForm'
 import { getPlanDetail, INVITE_EXT_ID } from '../getPlanDetail'
 import { PlanWorkspace } from '../PlanWorkspace'
 import { MyAssignmentPanel } from '../RespondAssignmentButtons'
 import { RemoveAssignmentButton } from '../RemoveAssignmentButton'
+import { MobileSongsList } from './MobileSongsList'
+import { AddPlanDateForm } from './AddPlanDateForm'
+import { PlanTeamsManager } from './PlanTeamsManager'
 
 const PLAN_TYPE_LABELS: Record<string, string> = {
   sunday_service: 'Culte',
@@ -50,6 +53,7 @@ export default async function PlanDetailPage({
   const {
     plan, isRehearsal, teams, noTeamAssignments,
     planSongs, allSongs, announcements, recurringAnnouncements, sermons, videos,
+    availableTeams,
   } = detail
 
   const allAssignments = [...teams.flatMap(t => t.assignments), ...noTeamAssignments]
@@ -131,6 +135,20 @@ export default async function PlanDetailPage({
                   />
                 </div>
               )}
+
+              {/* Équipes + planifier une autre date */}
+              {canManage && (
+                <div className="mt-3 pt-3 border-t border-white/15 space-y-2">
+                  {!isRehearsal && (
+                    <PlanTeamsManager
+                      planId={id}
+                      teams={availableTeams}
+                      currentTeamIds={plan.team_ids ?? null}
+                    />
+                  )}
+                  <AddPlanDateForm planId={id} currentServiceDate={plan.service_date} />
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -144,6 +162,27 @@ export default async function PlanDetailPage({
           {plan.notes && (
             <div className="bg-teal/10 rounded-2xl px-4 py-3 font-sans text-sm text-dark/70">
               {plan.notes}
+            </div>
+          )}
+
+          {/* Chants */}
+          {((planSongs as unknown[]).length > 0 || true) && (
+            <div className="bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] overflow-hidden">
+              <div className="px-4 py-3 border-b border-teal/10 flex items-center justify-between bg-teal-50/50">
+                <p className="font-sans text-[10px] uppercase tracking-widest text-dark/40 font-semibold">
+                  <IconMusicalNote className="w-3 h-3 inline-block mr-1 text-dark/30" />
+                  Chants
+                </p>
+                {(planSongs as unknown[]).length > 0 && (
+                  <Link href={`/benevoles/admin/plans/${id}/setlist`} className="font-sans text-xs text-teal">
+                    Setlist →
+                  </Link>
+                )}
+              </div>
+              <MobileSongsList planId={id} planSongs={planSongs as any} />
+              <div className="border-t border-teal/10 px-4 py-3 bg-teal-50/20">
+                <AddSongForm planId={id} songs={allSongs as any} />
+              </div>
             </div>
           )}
 
@@ -294,46 +333,6 @@ export default async function PlanDetailPage({
                 )
               })}
             </>
-          )}
-
-          {/* Chants */}
-          {(canManage || (planSongs as unknown[]).length > 0) && (
-            <div className="bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] relative">
-              <div className="px-4 py-3 border-b border-teal/10 flex items-center justify-between bg-teal-50/50 rounded-t-2xl">
-                <p className="font-sans text-[10px] uppercase tracking-widest text-dark/40 font-semibold">
-                  <IconMusicalNote className="w-3 h-3 inline-block mr-1 text-dark/30" />
-                  Chants
-                </p>
-                {(planSongs as unknown[]).length > 0 && (
-                  <Link href={`/benevoles/admin/plans/${id}/setlist`} className="font-sans text-xs text-teal">
-                    Setlist →
-                  </Link>
-                )}
-              </div>
-              {(planSongs as unknown[]).length > 0 && (
-                <div className="divide-y divide-teal/8">
-                  {(planSongs as any[]).map((ps, i) => (
-                    <div key={ps.id} className="px-4 py-3 flex items-center gap-3">
-                      <span className="font-sans text-xs text-dark/25 tabular-nums w-5 text-right shrink-0">{i + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-sans text-sm text-dark font-medium truncate">{ps.songs?.title ?? '—'}</p>
-                        {ps.key_selected && (
-                          <p className="font-sans text-xs text-dark/35 mt-0.5">Tonalité : {ps.key_selected}</p>
-                        )}
-                      </div>
-                      {ps.songs?.id && (
-                        <Link href={`/benevoles/chants/${ps.songs.id}`} className="text-dark/25 hover:text-teal transition-colors font-sans text-sm shrink-0 p-1">→</Link>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {canManage && (
-                <div className="px-4 pb-3 pt-2">
-                  <AddSongForm planId={id} songs={allSongs as any} compact />
-                </div>
-              )}
-            </div>
           )}
 
           {/* Annonces */}
