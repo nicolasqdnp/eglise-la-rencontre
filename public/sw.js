@@ -33,7 +33,7 @@ self.addEventListener('notificationclick', (event) => {
   )
 })
 
-const CACHE_VERSION = 'v4'
+const CACHE_VERSION = 'v5'
 const STATIC_CACHE  = `static-${CACHE_VERSION}`
 const OFFLINE_URL   = '/offline.html'
 

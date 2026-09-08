@@ -73,20 +73,44 @@ async function notifyTeamLeadersOfResponse(assignmentId: string, status: string)
 
 export async function createPlan(formData: FormData) {
   const { admin, church_id } = await requireAdmin()
-  const title = formData.get('title') as string
+  const title     = formData.get('title') as string
   const serviceDate = formData.get('service_date') as string
-  const teamId = formData.get('team_id') as string || null
-  const notes = formData.get('notes') as string || null
-  const planType = (formData.get('plan_type') as string) || 'sunday_service'
+  const notes     = formData.get('notes') as string || null
+  const planType  = (formData.get('plan_type') as string) || 'sunday_service'
+  const teamIds   = formData.getAll('team_ids[]') as string[]
+  // Compatibilité : si aucun team_ids[], on lit le champ legacy team_id
+  const legacyTeamId = formData.get('team_id') as string || null
+  const resolvedTeamIds = teamIds.length > 0 ? teamIds : (legacyTeamId ? [legacyTeamId] : null)
 
   const { data, error } = await admin
     .from('plans')
-    .insert({ title, service_date: serviceDate, team_id: teamId, notes, plan_type: planType, church_id })
+    .insert({
+      title,
+      service_date: serviceDate,
+      team_id:      resolvedTeamIds?.[0] ?? null,   // garde la colonne legacy
+      team_ids:     resolvedTeamIds ?? null,
+      notes,
+      plan_type:    planType,
+      church_id,
+    })
     .select('id')
     .single()
 
   if (error) redirect(`/benevoles/admin/plans/nouveau?error=${encodeURIComponent(error.message)}`)
   redirect(`/benevoles/admin/plans/${data.id}`)
+}
+
+/** Met à jour la liste des équipes d'un plan (remplace complètement). */
+export async function setPlanTeams(formData: FormData) {
+  const { admin } = await requireAdmin()
+  const planId  = formData.get('plan_id') as string
+  const teamIds = formData.getAll('team_ids[]') as string[]
+  await admin
+    .from('plans')
+    .update({ team_ids: teamIds.length > 0 ? teamIds : null })
+    .eq('id', planId)
+  revalidatePath(`/benevoles/admin/plans/${planId}`)
+  revalidatePath('/benevoles/admin/plans')
 }
 
 /** Crée un ou plusieurs plans depuis un formulaire unifié (champ date_mode = "single" | "multi"). */
@@ -102,16 +126,24 @@ export async function createPlans(formData: FormData) {
   const { admin, church_id } = await requireAdmin()
   const title      = formData.get('title') as string
   const dates      = formData.getAll('service_dates') as string[]
-  const teamId     = formData.get('team_id') as string || null
   const notes      = formData.get('notes') as string || null
   const planType   = (formData.get('plan_type') as string) || 'sunday_service'
+  const teamIds    = formData.getAll('team_ids[]') as string[]
+  const legacyTeamId = formData.get('team_id') as string || null
+  const resolvedTeamIds = teamIds.length > 0 ? teamIds : (legacyTeamId ? [legacyTeamId] : null)
 
   if (!dates.length) redirect('/benevoles/admin/plans/nouveau?error=no_dates')
 
   const { error } = await admin
     .from('plans')
     .insert(dates.map(d => ({
-      title, service_date: d, team_id: teamId, notes, plan_type: planType, church_id,
+      title,
+      service_date: d,
+      team_id:  resolvedTeamIds?.[0] ?? null,
+      team_ids: resolvedTeamIds ?? null,
+      notes,
+      plan_type: planType,
+      church_id,
     })))
 
   if (error) redirect(`/benevoles/admin/plans/nouveau?error=${encodeURIComponent(error.message)}`)
@@ -127,7 +159,7 @@ export async function duplicatePlanToDate(formData: FormData) {
 
   const { data: source, error: srcError } = await admin
     .from('plans')
-    .select('title, plan_type, team_id, notes')
+    .select('title, plan_type, team_id, team_ids, notes')
     .eq('id', fromPlanId)
     .single()
 
@@ -139,6 +171,7 @@ export async function duplicatePlanToDate(formData: FormData) {
       title:        source.title,
       plan_type:    source.plan_type,
       team_id:      source.team_id,
+      team_ids:     (source as any).team_ids ?? null,
       notes:        source.notes,
       service_date: serviceDate,
       church_id,

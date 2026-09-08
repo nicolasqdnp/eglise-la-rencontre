@@ -47,9 +47,11 @@ export type TeamDetail = {
 }
 
 export type PlanDetail = {
-  plan: { id: string; title: string; service_date: string; notes: string | null; plan_type: string | null }
+  plan: { id: string; title: string; service_date: string; notes: string | null; plan_type: string | null; team_ids: string[] | null }
   isRehearsal: boolean
   teams: TeamDetail[]
+  /** Toutes les équipes disponibles (non filtrées) — pour le gestionnaire d'équipes. */
+  availableTeams: { id: string; name: string }[]
   noTeamAssignments: AssignmentRow[]
   pendingCount: number
   planSongs: unknown[]
@@ -83,7 +85,7 @@ export async function getPlanDetail(
     { data: videos },
     { data: recurringAnnouncements },
   ] = await Promise.all([
-    supabase.from('plans').select('id, title, service_date, notes, plan_type').eq('id', planId).single(),
+    supabase.from('plans').select('id, title, service_date, notes, plan_type, team_ids').eq('id', planId).single(),
     supabase
       .from('plan_assignments')
       .select('id, status, user_id, position_id, team_id, external_name, external_email, invitation_sent_at, profiles(first_name, last_name), positions(id, name, team_id)')
@@ -203,10 +205,20 @@ export async function getPlanDetail(
   )
 
   const isRehearsal = plan.plan_type === 'rehearsal'
+
+  // Filtrage des équipes : prayer_meeting → équipes prière seulement ;
+  // sinon si team_ids est défini → seulement celles-là ; sinon → toutes.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allTeams = teams ?? [] as any[]
+  const planTeamIds = (plan as any).team_ids as string[] | null
   const relevantTeams = plan.plan_type === 'prayer_meeting'
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ? (teams ?? []).filter((t: any) => t.is_prayer_meeting)
-    : (teams ?? [])
+    ? allTeams.filter((t: any) => t.is_prayer_meeting)
+    : planTeamIds && planTeamIds.length > 0
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ? allTeams.filter((t: any) => planTeamIds.includes(t.id))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      : allTeams
 
   const teamDetails: TeamDetail[] = relevantTeams.map((team: any) => {
     const teamPositions = team.positions as unknown as Position[]
@@ -264,10 +276,18 @@ export async function getPlanDetail(
     }
   })
 
+  // Équipes disponibles pour le gestionnaire (toutes sauf prière si service normal)
+  const availableTeams: { id: string; name: string }[] = (
+    plan.plan_type === 'prayer_meeting'
+      ? allTeams.filter((t: any) => t.is_prayer_meeting)
+      : allTeams.filter((t: any) => !t.is_prayer_meeting)
+  ).map((t: any) => ({ id: t.id, name: t.name }))
+
   return {
     plan,
     isRehearsal,
     teams: teamDetails,
+    availableTeams,
     noTeamAssignments,
     pendingCount,
     planSongs: planSongs ?? [],

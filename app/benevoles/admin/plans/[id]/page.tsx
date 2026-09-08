@@ -18,6 +18,7 @@ import { MyAssignmentPanel } from '../RespondAssignmentButtons'
 import { RemoveAssignmentButton } from '../RemoveAssignmentButton'
 import { MobileSongsList } from './MobileSongsList'
 import { AddPlanDateForm } from './AddPlanDateForm'
+import { PlanTeamsManager } from './PlanTeamsManager'
 
 const PLAN_TYPE_LABELS: Record<string, string> = {
   sunday_service: 'Culte',
@@ -52,6 +53,7 @@ export default async function PlanDetailPage({
   const {
     plan, isRehearsal, teams, noTeamAssignments,
     planSongs, allSongs, announcements, recurringAnnouncements, sermons, videos,
+    availableTeams,
   } = detail
 
   const allAssignments = [...teams.flatMap(t => t.assignments), ...noTeamAssignments]
@@ -134,9 +136,16 @@ export default async function PlanDetailPage({
                 </div>
               )}
 
-              {/* Planifier une autre date */}
+              {/* Équipes + planifier une autre date */}
               {canManage && (
-                <div className="mt-3 pt-3 border-t border-white/15">
+                <div className="mt-3 pt-3 border-t border-white/15 space-y-2">
+                  {!isRehearsal && (
+                    <PlanTeamsManager
+                      planId={id}
+                      teams={availableTeams}
+                      currentTeamIds={plan.team_ids ?? null}
+                    />
+                  )}
                   <AddPlanDateForm planId={id} currentServiceDate={plan.service_date} />
                 </div>
               )}

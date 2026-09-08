@@ -274,20 +274,27 @@ export function NouveauPlanForm({ teams, error }: { teams: Team[]; error?: strin
               )}
             </div>
 
-            {/* Équipe */}
+            {/* Équipes */}
             <div>
               <label className="block font-sans text-[10px] text-dark/40 uppercase tracking-widest mb-1.5">
-                Équipe <span className="normal-case">(optionnel)</span>
+                Équipes <span className="normal-case">(laisser vide = toutes)</span>
               </label>
-              <select
-                name="team_id"
-                className="w-full px-4 py-2.5 rounded-xl border border-dark/10 bg-sand text-dark focus:outline-none focus:ring-2 focus:ring-teal/20 font-sans text-sm"
-              >
-                <option value="">Toutes les équipes</option>
+              <div className="rounded-xl border border-dark/10 overflow-hidden divide-y divide-dark/6">
                 {teams.map(t => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
+                  <label key={t.id} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-teal/5 transition-colors">
+                    <input
+                      type="checkbox"
+                      name="team_ids[]"
+                      value={t.id}
+                      className="w-4 h-4 rounded accent-teal shrink-0"
+                    />
+                    <span className="font-sans text-sm text-dark">{t.name}</span>
+                  </label>
                 ))}
-              </select>
+              </div>
+              <p className="font-sans text-[10px] text-dark/35 mt-1.5 px-1">
+                Si aucune équipe sélectionnée, toutes seront incluses.
+              </p>
             </div>
 
             {/* Notes */}

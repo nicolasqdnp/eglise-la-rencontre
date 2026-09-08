@@ -15,6 +15,7 @@ import SermonSection from './[id]/SermonSection'
 import VideoSection from './[id]/VideoSection'
 import ShareButton from './[id]/ShareButton'
 import { AddPlanDateForm } from './[id]/AddPlanDateForm'
+import { PlanTeamsManager } from './[id]/PlanTeamsManager'
 
 type Props = {
   planId: string
@@ -165,8 +166,15 @@ export function AssignmentBoard({ planId, detail, fillKey, isAdmin, flashError, 
           </div>
         </div>
 
-        {/* Planifier une autre date */}
-        <div className="mt-3 pt-3 border-t border-white/20">
+        {/* Équipes + planifier une autre date */}
+        <div className="mt-3 pt-3 border-t border-white/20 space-y-2">
+          {!isRehearsal && (
+            <PlanTeamsManager
+              planId={planId}
+              teams={detail.availableTeams}
+              currentTeamIds={plan.team_ids ?? null}
+            />
+          )}
           <AddPlanDateForm planId={planId} currentServiceDate={plan.service_date} />
         </div>
 
