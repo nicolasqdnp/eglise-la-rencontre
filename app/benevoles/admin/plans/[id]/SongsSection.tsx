@@ -52,8 +52,6 @@ export function SongsSection({ planId, planSongs, allSongs }: Props) {
   const isDraggingRef      = useRef(false)
   const dragIdRef          = useRef<string | null>(null)
   const dragOverIndexRef   = useRef<number | null>(null)
-  const longPressTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   // Drag state (pour le rendu)
   const [draggingId,    setDraggingId]    = useState<string | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -66,9 +64,16 @@ export function SongsSection({ planId, planSongs, allSongs }: Props) {
     const container = listContainerRef.current
     if (!container) return
 
+    // touchstart non-passif : bloque immédiatement le scroll quand on touche une poignée
+    function handleTouchStart(e: TouchEvent) {
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-drag-handle]')) return
+      e.preventDefault() // empêche le scroll dès le debut du toucher
+    }
+
     function handleTouchMove(e: TouchEvent) {
       if (!isDraggingRef.current) return
-      e.preventDefault() // bloque le scroll de page pendant le drag
+      e.preventDefault()
 
       const touch = e.touches[0]
       const y = touch.clientY
@@ -89,24 +94,18 @@ export function SongsSection({ planId, planSongs, allSongs }: Props) {
     }
 
     function commitDrag() {
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current)
-        longPressTimerRef.current = null
-      }
+      if (!isDraggingRef.current) return
 
-      if (isDraggingRef.current && dragIdRef.current !== null && dragOverIndexRef.current !== null) {
-        const songs   = optimisticSongsRef.current
-        const fromIdx = songs.findIndex(ps => ps.id === dragIdRef.current)
-        const toIdx   = dragOverIndexRef.current
+      const fromIdx = optimisticSongsRef.current.findIndex(ps => ps.id === dragIdRef.current)
+      const toIdx   = dragOverIndexRef.current
 
-        if (fromIdx !== -1 && fromIdx !== toIdx) {
-          const newOrder = [...songs]
-          const [item]   = newOrder.splice(fromIdx, 1)
-          newOrder.splice(toIdx, 0, item)
-          setOptimisticSongs(newOrder)
-          optimisticSongsRef.current = newOrder
-          reorderPlanSongs(planId, newOrder.map(ps => ps.id))
-        }
+      if (fromIdx !== -1 && toIdx !== null && fromIdx !== toIdx) {
+        const newOrder = [...optimisticSongsRef.current]
+        const [item]   = newOrder.splice(fromIdx, 1)
+        newOrder.splice(toIdx, 0, item)
+        setOptimisticSongs(newOrder)
+        optimisticSongsRef.current = newOrder
+        reorderPlanSongs(planId, newOrder.map(ps => ps.id))
       }
 
       isDraggingRef.current    = false
@@ -116,31 +115,27 @@ export function SongsSection({ planId, planSongs, allSongs }: Props) {
       setDragOverIndex(null)
     }
 
-    container.addEventListener('touchmove',   handleTouchMove, { passive: false })
+    container.addEventListener('touchstart',  handleTouchStart, { passive: false })
+    container.addEventListener('touchmove',   handleTouchMove,  { passive: false })
     container.addEventListener('touchend',    commitDrag)
     container.addEventListener('touchcancel', commitDrag)
 
     return () => {
+      container.removeEventListener('touchstart',  handleTouchStart)
       container.removeEventListener('touchmove',   handleTouchMove)
       container.removeEventListener('touchend',    commitDrag)
       container.removeEventListener('touchcancel', commitDrag)
     }
   }, [planId])
 
-  function startLongPress(id: string) {
-    longPressTimerRef.current = setTimeout(() => {
-      isDraggingRef.current = true
-      dragIdRef.current     = id
-      setDraggingId(id)
-      navigator.vibrate?.(30)
-    }, 400)
-  }
-
-  function cancelLongPress() {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current)
-      longPressTimerRef.current = null
-    }
+  // Démarrage immédiat du drag tactile depuis la poignée (pas de long press)
+  function startTouchDrag(id: string, currentIndex: number) {
+    isDraggingRef.current    = true
+    dragIdRef.current        = id
+    dragOverIndexRef.current = currentIndex  // initialise à la position courante
+    setDraggingId(id)
+    setDragOverIndex(currentIndex)
+    navigator.vibrate?.(20)
   }
 
   // ── Mouse drag (HTML5 Drag & Drop API) ─────────────────────────
@@ -267,13 +262,13 @@ export function SongsSection({ planId, planSongs, allSongs }: Props) {
                       : isActive ? 'bg-teal/8' : 'hover:bg-teal/4'
                   }`}
                 >
-                  {/* Poignée de glissement (pression longue) */}
+                  {/* Poignée de glissement — toucher et glisser pour réordonner */}
                   <div
-                    className="shrink-0 text-dark/20 touch-none cursor-grab active:cursor-grabbing"
-                    onTouchStart={() => startLongPress(ps.id)}
-                    onTouchCancel={cancelLongPress}
+                    data-drag-handle="true"
+                    className="shrink-0 touch-none cursor-grab active:cursor-grabbing flex items-center justify-center w-8 h-8 -ml-1 text-dark/25 hover:text-dark/50 active:text-teal transition-colors"
+                    onTouchStart={() => startTouchDrag(ps.id, i)}
                   >
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="currentColor">
+                    <svg className="w-4 h-4 pointer-events-none" viewBox="0 0 14 14" fill="currentColor">
                       <rect x="2" y="2.5"  width="10" height="1.5" rx="0.75"/>
                       <rect x="2" y="6.25" width="10" height="1.5" rx="0.75"/>
                       <rect x="2" y="10"   width="10" height="1.5" rx="0.75"/>
