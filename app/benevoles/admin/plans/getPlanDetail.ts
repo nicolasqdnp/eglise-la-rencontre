@@ -47,7 +47,7 @@ export type TeamDetail = {
 }
 
 export type PlanDetail = {
-  plan: { id: string; title: string; service_date: string; notes: string | null; plan_type: string | null; team_ids: string[] | null }
+  plan: { id: string; title: string; service_date: string; notes: string | null; plan_type: string | null; team_ids: string[] | null; excluded_position_ids: string[] | null }
   isRehearsal: boolean
   teams: TeamDetail[]
   /** Toutes les équipes disponibles (non filtrées) — pour le gestionnaire d'équipes. */
@@ -85,7 +85,7 @@ export async function getPlanDetail(
     { data: videos },
     { data: recurringAnnouncements },
   ] = await Promise.all([
-    supabase.from('plans').select('id, title, service_date, notes, plan_type, team_ids').eq('id', planId).single(),
+    supabase.from('plans').select('id, title, service_date, notes, plan_type, team_ids, excluded_position_ids').eq('id', planId).single(),
     supabase
       .from('plan_assignments')
       .select('id, status, user_id, position_id, team_id, external_name, external_email, invitation_sent_at, profiles(first_name, last_name), positions(id, name, team_id)')

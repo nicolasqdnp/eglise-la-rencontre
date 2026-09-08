@@ -113,6 +113,32 @@ export async function setPlanTeams(formData: FormData) {
   revalidatePath('/benevoles/admin/plans')
 }
 
+/** Exclut ou réintègre un poste pour un plan donné (sans le supprimer de l'équipe). */
+export async function excludePlanPosition(formData: FormData) {
+  const { admin } = await requireAdmin()
+  const planId     = formData.get('plan_id') as string
+  const positionId = formData.get('position_id') as string
+  const exclude    = formData.get('exclude') === '1'
+
+  const { data: plan } = await admin
+    .from('plans')
+    .select('excluded_position_ids')
+    .eq('id', planId)
+    .single()
+
+  const current = (plan?.excluded_position_ids ?? []) as string[]
+  const next = exclude
+    ? [...new Set([...current, positionId])]
+    : current.filter(id => id !== positionId)
+
+  await admin
+    .from('plans')
+    .update({ excluded_position_ids: next.length > 0 ? next : null })
+    .eq('id', planId)
+  revalidatePath(`/benevoles/admin/plans/${planId}`)
+  revalidatePath('/benevoles/admin/plans')
+}
+
 /** Crée un ou plusieurs plans depuis un formulaire unifié (champ date_mode = "single" | "multi"). */
 export async function createPlanUnified(formData: FormData) {
   const dateMode = formData.get('date_mode') as string
