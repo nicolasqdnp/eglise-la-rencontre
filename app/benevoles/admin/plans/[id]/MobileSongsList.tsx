@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useTransition } from 'react'
 import Link from 'next/link'
-import { reorderPlanSongs } from '../actions'
+import { reorderPlanSongs, removePlanSong } from '../actions'
 
 type PlanSong = {
   id: string
@@ -18,6 +18,7 @@ type Props = {
 export function MobileSongsList({ planId, planSongs }: Props) {
   const [optimisticSongs, setOptimisticSongs] = useState(planSongs)
   const optimisticRef = useRef(planSongs)
+  const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
     if (!isDraggingRef.current) {
@@ -100,6 +101,17 @@ export function MobileSongsList({ planId, planSongs }: Props) {
     }
   }, [planId])
 
+  function handleRemove(planSongId: string) {
+    // Suppression optimiste
+    const next = optimisticRef.current.filter(ps => ps.id !== planSongId)
+    setOptimisticSongs(next)
+    optimisticRef.current = next
+    const fd = new FormData()
+    fd.set('plan_song_id', planSongId)
+    fd.set('plan_id', planId)
+    startTransition(() => removePlanSong(fd))
+  }
+
   function startDrag(id: string, index: number) {
     isDraggingRef.current  = true
     dragIdRef.current      = id
@@ -158,6 +170,13 @@ export function MobileSongsList({ planId, planSongs }: Props) {
                   className="text-dark/25 hover:text-teal transition-colors font-sans text-sm shrink-0 p-1"
                 >→</Link>
               )}
+
+              <button
+                onClick={() => handleRemove(ps.id)}
+                disabled={isPending}
+                className="text-dark/15 hover:text-red-400 transition-colors text-lg leading-none shrink-0 px-1 disabled:opacity-40"
+                title="Supprimer ce chant"
+              >×</button>
             </div>
           </div>
         )
