@@ -148,6 +148,27 @@ export default async function PlanDetailPage({
             </div>
           )}
 
+          {/* Chants */}
+          {((planSongs as unknown[]).length > 0 || true) && (
+            <div className="bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] overflow-hidden">
+              <div className="px-4 py-3 border-b border-teal/10 flex items-center justify-between bg-teal-50/50">
+                <p className="font-sans text-[10px] uppercase tracking-widest text-dark/40 font-semibold">
+                  <IconMusicalNote className="w-3 h-3 inline-block mr-1 text-dark/30" />
+                  Chants
+                </p>
+                {(planSongs as unknown[]).length > 0 && (
+                  <Link href={`/benevoles/admin/plans/${id}/setlist`} className="font-sans text-xs text-teal">
+                    Setlist →
+                  </Link>
+                )}
+              </div>
+              <MobileSongsList planId={id} planSongs={planSongs as any} />
+              <div className="border-t border-teal/10 px-4 py-3 bg-teal-50/20">
+                <AddSongForm planId={id} songs={allSongs as any} />
+              </div>
+            </div>
+          )}
+
           {/* Équipes */}
           {!isRehearsal && visibleTeams.length > 0 && (
             <>
@@ -295,27 +316,6 @@ export default async function PlanDetailPage({
                 )
               })}
             </>
-          )}
-
-          {/* Chants */}
-          {((planSongs as unknown[]).length > 0 || true) && (
-            <div className="bg-white rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] overflow-hidden">
-              <div className="px-4 py-3 border-b border-teal/10 flex items-center justify-between bg-teal-50/50">
-                <p className="font-sans text-[10px] uppercase tracking-widest text-dark/40 font-semibold">
-                  <IconMusicalNote className="w-3 h-3 inline-block mr-1 text-dark/30" />
-                  Chants
-                </p>
-                {(planSongs as unknown[]).length > 0 && (
-                  <Link href={`/benevoles/admin/plans/${id}/setlist`} className="font-sans text-xs text-teal">
-                    Setlist →
-                  </Link>
-                )}
-              </div>
-              <MobileSongsList planId={id} planSongs={planSongs as any} />
-              <div className="border-t border-teal/10 px-4 py-3 bg-teal-50/20">
-                <AddSongForm planId={id} songs={allSongs as any} />
-              </div>
-            </div>
           )}
 
           {/* Annonces */}
