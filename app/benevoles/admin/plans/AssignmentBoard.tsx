@@ -183,6 +183,16 @@ export function AssignmentBoard({ planId, detail, fillKey, isAdmin, flashError, 
         <div className="bg-teal/10 rounded-xl px-5 py-3 font-sans text-sm text-dark/70">{plan.notes}</div>
       )}
 
+      {/* Chants */}
+      <div className="space-y-2">
+        {planSongs.length > 0 && (
+          <div className="flex justify-end">
+            <CopySetlistButton planId={planId} songCount={planSongs.length} />
+          </div>
+        )}
+        <SongsSection planId={planId} planSongs={planSongs as any} allSongs={allSongs as any} />
+      </div>
+
       {/* Équipes — masquées pour les répétitions */}
       {!isRehearsal && visibleTeams.map(team => {
         const filledPositionIds = new Set(team.assignments.map(a => a.position_id).filter(Boolean) as string[])
@@ -236,16 +246,6 @@ export function AssignmentBoard({ planId, detail, fillKey, isAdmin, flashError, 
           </section>
         )
       })}
-
-      {/* Chants */}
-      <div className="space-y-2">
-        {planSongs.length > 0 && (
-          <div className="flex justify-end">
-            <CopySetlistButton planId={planId} songCount={planSongs.length} />
-          </div>
-        )}
-        <SongsSection planId={planId} planSongs={planSongs as any} allSongs={allSongs as any} />
-      </div>
 
       {/* Annonces */}
       <section className="bg-white rounded-2xl border border-teal/20 overflow-hidden">
