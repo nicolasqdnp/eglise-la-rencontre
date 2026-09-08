@@ -35,7 +35,7 @@ export function ChordChart({ chart, originalKey, initialKey, songId, arrangement
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 w-full overflow-x-hidden">
       {/* Barre d'outils */}
       <div className="bg-white rounded-2xl border border-teal/20 p-4 space-y-3">
         {/* Ligne : tonalité + actions */}
@@ -102,8 +102,8 @@ export function ChordChart({ chart, originalKey, initialKey, songId, arrangement
       </div>
 
       {/* Grille d'accords */}
-      <div className="bg-white rounded-2xl border border-teal/20 p-5 overflow-x-auto max-w-full">
-        <pre className="font-mono text-sm leading-relaxed whitespace-pre min-w-max">
+      <div className="bg-white rounded-2xl border border-teal/20 p-5 overflow-x-auto w-full">
+        <pre className="font-mono text-[11px] sm:text-sm leading-relaxed whitespace-pre min-w-max">
           {transposed.split('\n').map((line, i) => {
             if (!line.trim()) return <span key={i}>{'\n'}</span>
 
