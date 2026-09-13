@@ -390,3 +390,74 @@ export async function sendPlanAssignmentEmail({
   })
   if (errPlan) throw new Error(`Resend sendPlanAssignmentEmail: ${errPlan.message} (to: ${to})`)
 }
+
+/* ── Notification annuaire entrepreneur ───────────────────── */
+
+const STATUS_FR: Record<string, string> = {
+  active:    'En activité',
+  launching: 'En cours de création',
+  project:   'Projet / réflexion',
+}
+
+export async function sendEntrepreneurSubmissionNotification(entrepreneur: {
+  first_name: string
+  last_name: string
+  company_name: string
+  sector: string | null
+  status: string | null
+  contact_email: string | null
+}) {
+  const resend  = getResend()
+  const siteUrl = getSiteUrl()
+  const adminTo = process.env.ADMIN_EMAIL ?? 'nicolas.salafranque@egliselarencontre.fr'
+
+  const { error } = await resend.emails.send({
+    from:    'Annuaire Entrepreneurs <noreply@egliselarencontre.fr>',
+    to:      adminTo,
+    subject: `[Annuaire] Nouvelle fiche : ${entrepreneur.first_name} ${entrepreneur.last_name} — ${entrepreneur.company_name}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:540px;margin:0 auto;color:#1C2B2D;">
+        <div style="background:linear-gradient(135deg,#5A9EA6,#3D7D85);padding:32px 28px;border-radius:16px 16px 0 0;">
+          <p style="color:rgba(255,255,255,0.6);font-size:11px;letter-spacing:2px;text-transform:uppercase;margin:0 0 6px;">Annuaire des entrepreneurs</p>
+          <h1 style="color:#fff;font-size:22px;font-weight:400;margin:0;">Nouvelle fiche à valider</h1>
+        </div>
+
+        <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 16px 16px;padding:28px;">
+          <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+            <tr>
+              <td style="padding:8px 0;font-size:12px;color:#6b7280;width:40%;border-bottom:1px solid #f3f4f6;">Nom</td>
+              <td style="padding:8px 0;font-size:14px;font-weight:600;border-bottom:1px solid #f3f4f6;">${entrepreneur.first_name} ${entrepreneur.last_name}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;font-size:12px;color:#6b7280;border-bottom:1px solid #f3f4f6;">Entreprise</td>
+              <td style="padding:8px 0;font-size:14px;font-weight:600;color:#5A9EA6;border-bottom:1px solid #f3f4f6;">${entrepreneur.company_name}</td>
+            </tr>
+            ${entrepreneur.sector ? `<tr>
+              <td style="padding:8px 0;font-size:12px;color:#6b7280;border-bottom:1px solid #f3f4f6;">Secteur</td>
+              <td style="padding:8px 0;font-size:14px;border-bottom:1px solid #f3f4f6;">${entrepreneur.sector}</td>
+            </tr>` : ''}
+            ${entrepreneur.status ? `<tr>
+              <td style="padding:8px 0;font-size:12px;color:#6b7280;border-bottom:1px solid #f3f4f6;">Statut</td>
+              <td style="padding:8px 0;font-size:14px;border-bottom:1px solid #f3f4f6;">${STATUS_FR[entrepreneur.status] ?? entrepreneur.status}</td>
+            </tr>` : ''}
+            ${entrepreneur.contact_email ? `<tr>
+              <td style="padding:8px 0;font-size:12px;color:#6b7280;">Email</td>
+              <td style="padding:8px 0;font-size:14px;">${entrepreneur.contact_email}</td>
+            </tr>` : ''}
+          </table>
+
+          <a href="${siteUrl}/annuaire/admin"
+             style="display:inline-block;background:#5A9EA6;color:#fff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px;margin-bottom:20px;">
+            ✓ Valider la fiche →
+          </a>
+
+          <p style="font-size:12px;color:#9ca3af;margin:0;">
+            Église La Rencontre · Annuaire entrepreneurs
+          </p>
+        </div>
+      </div>
+    `,
+  })
+  if (error) console.error('[sendEntrepreneurSubmissionNotification]', error)
+  // On ne throw pas — une erreur d'email ne doit pas bloquer la soumission
+}

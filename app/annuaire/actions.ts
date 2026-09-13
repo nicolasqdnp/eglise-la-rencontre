@@ -3,6 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { sendEntrepreneurSubmissionNotification } from '@/lib/email'
 import type { EntrepreneurLink } from './constants'
 
 /* ── Soumission publique ─────────────────────────────────── */
@@ -77,6 +78,16 @@ export async function submitEntrepreneur(
     console.error('submitEntrepreneur:', error)
     return { success: false, error: 'Une erreur est survenue, veuillez réessayer.' }
   }
+
+  // Notification email à l'admin (fire-and-forget — ne bloque pas la réponse)
+  sendEntrepreneurSubmissionNotification({
+    first_name:    firstName,
+    last_name:     lastName,
+    company_name:  companyName,
+    sector:        (formData.get('sector') as string) || null,
+    status,
+    contact_email: (formData.get('contact_email') as string)?.trim() || null,
+  }).catch(err => console.error('[annuaire] notification email failed:', err))
 
   return { success: true }
 }
