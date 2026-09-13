@@ -25,6 +25,9 @@ CREATE TABLE IF NOT EXISTS entrepreneurs (
   -- Liens sociaux/web — tableau JSON [{ type: 'website'|'instagram'|..., url: '...' }]
   links            jsonb       DEFAULT '[]',
 
+  -- Statut de l'activité
+  status           text        CHECK (status IN ('active', 'launching', 'project')),
+
   -- Modération
   visible          boolean     DEFAULT false
 );

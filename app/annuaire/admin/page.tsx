@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { approveEntrepreneur, hideEntrepreneur } from '../actions'
 import { DeleteButton } from './DeleteButton'
-import { LINK_TYPES, TARGET_LABELS, GEO_LABELS, type Entrepreneur } from '../constants'
+import { LINK_TYPES, TARGET_LABELS, GEO_LABELS, STATUS_LABELS, STATUS_COLORS, type Entrepreneur } from '../constants'
 
 export const metadata: Metadata = {
   title: 'Admin Annuaire — Église La Rencontre',
@@ -56,6 +56,11 @@ function EntrepreneurRow({ e, pending }: { e: Entrepreneur; pending: boolean }) 
 
       {/* Détails */}
       <div className="flex flex-wrap gap-1.5">
+        {e.status && (
+          <span className={`inline-block px-2 py-0.5 rounded-full font-sans text-[10px] font-semibold uppercase tracking-wide ${STATUS_COLORS[e.status]}`}>
+            {STATUS_LABELS[e.status]}
+          </span>
+        )}
         {e.sector && <Badge>{e.sector}</Badge>}
         {e.target && <Badge>{TARGET_LABELS[e.target]}</Badge>}
         {e.geo    && <Badge>{GEO_LABELS[e.geo]}</Badge>}

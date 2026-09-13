@@ -163,19 +163,25 @@ export function EntrepreneurForm() {
               {/* Email + Téléphone */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-sans text-[10px] uppercase tracking-widest text-dark/40 mb-1.5">Email de contact</label>
+                  <label className="block font-sans text-[10px] uppercase tracking-widest text-dark/40 mb-1.5">
+                    Email de contact <span className="text-coral">*</span>
+                  </label>
                   <input
                     name="contact_email"
                     type="email"
+                    required
                     className="w-full px-3.5 py-2.5 rounded-xl border border-dark/10 bg-sand text-dark font-sans text-sm focus:outline-none focus:ring-2 focus:ring-teal/20"
                     placeholder="nom@exemple.fr"
                   />
                 </div>
                 <div>
-                  <label className="block font-sans text-[10px] uppercase tracking-widest text-dark/40 mb-1.5">Téléphone</label>
+                  <label className="block font-sans text-[10px] uppercase tracking-widest text-dark/40 mb-1.5">
+                    Téléphone <span className="text-coral">*</span>
+                  </label>
                   <input
                     name="contact_phone"
                     type="tel"
+                    required
                     className="w-full px-3.5 py-2.5 rounded-xl border border-dark/10 bg-sand text-dark font-sans text-sm focus:outline-none focus:ring-2 focus:ring-teal/20"
                     placeholder="06 xx xx xx xx"
                   />
@@ -217,11 +223,36 @@ export function EntrepreneurForm() {
                 />
               </div>
 
+              {/* Statut */}
+              <div>
+                <label className="block font-sans text-[10px] uppercase tracking-widest text-dark/40 mb-2">
+                  Statut <span className="text-coral">*</span>
+                </label>
+                <div className="space-y-2">
+                  {[
+                    { value: 'active',    label: 'En activité',           desc: 'Mon entreprise existe et fonctionne' },
+                    { value: 'launching', label: 'En cours de création',  desc: 'Je suis en train de lancer mon activité' },
+                    { value: 'project',   label: 'Projet / réflexion',    desc: 'Je travaille sur un projet d\'entreprise' },
+                  ].map(opt => (
+                    <label key={opt.value} className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border-2 border-dark/10 hover:border-dark/20 transition-colors has-[:checked]:border-teal has-[:checked]:bg-teal/5">
+                      <input type="radio" name="status" value={opt.value} required className="w-4 h-4 accent-teal shrink-0" />
+                      <div>
+                        <p className="font-sans text-sm font-semibold text-dark">{opt.label}</p>
+                        <p className="font-sans text-[10px] text-dark/40">{opt.desc}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               {/* Secteur */}
               <div>
-                <label className="block font-sans text-[10px] uppercase tracking-widest text-dark/40 mb-1.5">Secteur d'activité</label>
+                <label className="block font-sans text-[10px] uppercase tracking-widest text-dark/40 mb-1.5">
+                  Secteur d'activité <span className="text-coral">*</span>
+                </label>
                 <select
                   name="sector"
+                  required
                   className="w-full px-3.5 py-2.5 rounded-xl border border-dark/10 bg-sand text-dark font-sans text-sm focus:outline-none focus:ring-2 focus:ring-teal/20"
                 >
                   <option value="">— Choisir —</option>
@@ -231,9 +262,12 @@ export function EntrepreneurForm() {
 
               {/* Description */}
               <div>
-                <label className="block font-sans text-[10px] uppercase tracking-widest text-dark/40 mb-1.5">Présentation</label>
+                <label className="block font-sans text-[10px] uppercase tracking-widest text-dark/40 mb-1.5">
+                  Présentation <span className="text-coral">*</span>
+                </label>
                 <textarea
                   name="description"
+                  required
                   rows={4}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-dark/10 bg-sand text-dark font-sans text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 resize-none"
                   placeholder="Décris ton activité, les services proposés, ce qui te différencie…"
@@ -242,7 +276,9 @@ export function EntrepreneurForm() {
 
               {/* Cible */}
               <div>
-                <label className="block font-sans text-[10px] uppercase tracking-widest text-dark/40 mb-2">Clientèle</label>
+                <label className="block font-sans text-[10px] uppercase tracking-widest text-dark/40 mb-2">
+                  Clientèle <span className="text-coral">*</span>
+                </label>
                 <div className="flex gap-2">
                   {[
                     { value: 'b2b',  label: 'B2B',         desc: 'Professionnels' },
@@ -262,7 +298,9 @@ export function EntrepreneurForm() {
 
               {/* Zone géographique */}
               <div>
-                <label className="block font-sans text-[10px] uppercase tracking-widest text-dark/40 mb-2">Zone géographique</label>
+                <label className="block font-sans text-[10px] uppercase tracking-widest text-dark/40 mb-2">
+                  Zone géographique <span className="text-coral">*</span>
+                </label>
                 <div className="flex gap-2">
                   {[
                     { value: 'local',         label: 'Local',         desc: 'Région / dép.' },
@@ -284,8 +322,9 @@ export function EntrepreneurForm() {
 
           {/* Card : Liens */}
           <div className="bg-white rounded-2xl border border-dark/8 shadow-sm overflow-hidden">
-            <div className="px-5 py-3 bg-teal/5 border-b border-dark/6">
+            <div className="px-5 py-3 bg-teal/5 border-b border-dark/6 flex items-center justify-between">
               <p className="font-sans text-[10px] uppercase tracking-widest text-dark/40 font-semibold">Liens</p>
+              <p className="font-sans text-[10px] text-dark/30">Optionnel</p>
             </div>
             <div className="p-5 space-y-3">
               {links.map((link, i) => (
@@ -325,6 +364,30 @@ export function EntrepreneurForm() {
             </div>
           </div>
 
+          {/* RGPD */}
+          <div className="bg-white rounded-2xl border border-dark/8 shadow-sm p-5 space-y-3">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                name="rgpd_consent"
+                required
+                className="mt-0.5 w-4 h-4 rounded accent-teal shrink-0"
+              />
+              <span className="font-sans text-sm text-dark/70 leading-relaxed">
+                J'accepte que mes informations soient publiées dans l'annuaire de l'Église La Rencontre,
+                accessible à toute personne disposant du lien direct. <span className="text-coral font-medium">*</span>
+              </span>
+            </label>
+            <p className="font-sans text-[11px] text-dark/40 leading-relaxed pl-7">
+              Conformément au RGPD, vos données sont utilisées uniquement pour l'annuaire de l'église
+              et ne sont pas transmises à des tiers. Vous pouvez demander la modification ou la suppression
+              de votre fiche à tout moment en contactant{' '}
+              <a href="mailto:contact@egliselarencontre.fr" className="underline underline-offset-2">
+                contact@egliselarencontre.fr
+              </a>.
+            </p>
+          </div>
+
           {/* Erreur */}
           {state?.error && (
             <p className="font-sans text-sm text-red-500 text-center bg-red-50 rounded-xl px-4 py-3">
@@ -342,7 +405,7 @@ export function EntrepreneurForm() {
           </button>
 
           <p className="font-sans text-[11px] text-dark/30 text-center pb-8">
-            Ta fiche sera vérifiée avant publication · Aucune donnée partagée avec des tiers
+            <span className="text-coral">*</span> Champs obligatoires · Ta fiche sera vérifiée avant publication
           </p>
         </form>
       </div>

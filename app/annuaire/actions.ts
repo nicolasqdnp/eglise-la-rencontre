@@ -17,7 +17,9 @@ export async function submitEntrepreneur(
   const firstName   = (formData.get('first_name')   as string)?.trim()
   const lastName    = (formData.get('last_name')    as string)?.trim()
   const companyName = (formData.get('company_name') as string)?.trim()
-  if (!firstName || !lastName || !companyName) {
+  const email       = (formData.get('contact_email') as string)?.trim()
+  const status      = (formData.get('status')       as string)
+  if (!firstName || !lastName || !companyName || !email || !status) {
     return { success: false, error: 'Merci de remplir tous les champs obligatoires.' }
   }
 
@@ -67,6 +69,7 @@ export async function submitEntrepreneur(
     geo:           (formData.get('geo')           as string)         || null,
     languages,
     links,
+    status,
     visible: false,
   })
 

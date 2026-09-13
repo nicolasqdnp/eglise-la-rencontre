@@ -37,6 +37,18 @@ export const GEO_LABELS: Record<string, string> = {
   international: 'International',
 }
 
+export const STATUS_LABELS: Record<string, string> = {
+  active:    'En activité',
+  launching: 'En cours de création',
+  project:   'Projet / réflexion',
+}
+
+export const STATUS_COLORS: Record<string, string> = {
+  active:    'bg-teal/10 text-teal',
+  launching: 'bg-coral/10 text-coral',
+  project:   'bg-dark/8 text-dark/50',
+}
+
 export type EntrepreneurLink = { type: string; url: string }
 
 export type Entrepreneur = {
@@ -54,5 +66,6 @@ export type Entrepreneur = {
   geo: 'local' | 'national' | 'international' | null
   languages: string[]
   links: EntrepreneurLink[]
+  status: 'active' | 'launching' | 'project' | null
   visible: boolean
 }

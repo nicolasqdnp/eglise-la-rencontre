@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { LINK_TYPES, TARGET_LABELS, GEO_LABELS, type Entrepreneur } from './constants'
+import { LINK_TYPES, TARGET_LABELS, GEO_LABELS, STATUS_LABELS, STATUS_COLORS, type Entrepreneur } from './constants'
 
 export const metadata: Metadata = {
   title: 'Annuaire des entrepreneurs — Église La Rencontre',
@@ -59,11 +59,18 @@ function EntrepreneurCard({ e }: { e: Entrepreneur }) {
             {e.first_name} {e.last_name}
           </p>
           <p className="font-sans text-sm text-teal font-semibold truncate mt-0.5">{e.company_name}</p>
-          {e.sector && (
-            <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full bg-teal/10 text-teal font-sans text-[10px] font-semibold uppercase tracking-wide">
-              {e.sector}
-            </span>
-          )}
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            {e.status && e.status !== 'active' && (
+              <span className={`px-2 py-0.5 rounded-full font-sans text-[10px] font-semibold ${STATUS_COLORS[e.status]}`}>
+                {STATUS_LABELS[e.status]}
+              </span>
+            )}
+            {e.sector && (
+              <span className="px-2 py-0.5 rounded-full bg-teal/10 text-teal font-sans text-[10px] font-semibold uppercase tracking-wide">
+                {e.sector}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
