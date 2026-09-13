@@ -3,7 +3,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
-import { approveEntrepreneur, hideEntrepreneur, deleteEntrepreneur } from '../actions'
+import { approveEntrepreneur, hideEntrepreneur } from '../actions'
+import { DeleteButton } from './DeleteButton'
 import { LINK_TYPES, TARGET_LABELS, GEO_LABELS, type Entrepreneur } from '../constants'
 
 export const metadata: Metadata = {
@@ -97,16 +98,7 @@ function EntrepreneurRow({ e, pending }: { e: Entrepreneur; pending: boolean }) 
             </button>
           </form>
         )}
-        <form action={deleteEntrepreneur}>
-          <input type="hidden" name="id" value={e.id} />
-          <button
-            type="submit"
-            className="px-4 py-2 rounded-xl border border-red-200 text-red-400 font-sans text-xs font-medium hover:bg-red-50 transition-colors"
-            onClick={e => { if (!confirm('Supprimer définitivement cette fiche ?')) e.preventDefault() }}
-          >
-            Supprimer
-          </button>
-        </form>
+        <DeleteButton id={e.id} />
       </div>
     </div>
   )
