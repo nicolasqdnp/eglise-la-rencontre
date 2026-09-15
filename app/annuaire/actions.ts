@@ -115,7 +115,7 @@ export async function approveEntrepreneur(formData: FormData) {
   // Récupérer les infos avant de valider (pour l'email de confirmation)
   const { data: entrepreneur } = await admin
     .from('entrepreneurs')
-    .select('id, first_name, last_name, company_name, contact_email')
+    .select('id, first_name, last_name, company_name, contact_email, edit_token')
     .eq('id', id)
     .single()
 
@@ -131,6 +131,7 @@ export async function approveEntrepreneur(formData: FormData) {
       last_name:     entrepreneur.last_name,
       company_name:  entrepreneur.company_name,
       contact_email: entrepreneur.contact_email,
+      edit_token:    entrepreneur.edit_token ?? null,
     }).catch(err => console.error('[annuaire] approval email failed:', err))
   }
 }
@@ -151,4 +152,93 @@ export async function deleteEntrepreneur(formData: FormData) {
   await admin.from('entrepreneurs').delete().eq('id', id)
   revalidatePath('/annuaire')
   revalidatePath('/annuaire/admin')
+}
+
+/* ── Actions self-service (par token) ───────────────────── */
+
+export async function updateEntrepreneurByToken(
+  _prev: { error?: string } | null,
+  formData: FormData,
+): Promise<{ success: boolean; error?: string }> {
+  const admin = createAdminClient()
+  const token = formData.get('edit_token') as string
+  if (!token) return { success: false, error: 'Token manquant.' }
+
+  // Vérifier que le token existe
+  const { data: existing } = await admin
+    .from('entrepreneurs')
+    .select('id, photo_url')
+    .eq('edit_token', token)
+    .single()
+  if (!existing) return { success: false, error: 'Lien invalide ou expiré.' }
+
+  // Photo upload (optionnel — si nouveau fichier fourni)
+  const photo = formData.get('photo') as File | null
+  let photoUrl: string | null = existing.photo_url ?? null
+
+  if (photo && photo.size > 0) {
+    await admin.storage.createBucket('entrepreneurs', { public: true }).catch(() => {})
+    const ext      = photo.name.split('.').pop()?.toLowerCase().replace(/[^a-z]/g, '') || 'jpg'
+    const filename = `${crypto.randomUUID()}.${ext}`
+    const buffer   = Buffer.from(await photo.arrayBuffer())
+    const { error: uploadError } = await admin.storage
+      .from('entrepreneurs')
+      .upload(filename, buffer, { contentType: photo.type, upsert: false })
+    if (!uploadError) {
+      photoUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/entrepreneurs/${filename}`
+    }
+  }
+
+  // Liens
+  let links: EntrepreneurLink[] = []
+  try {
+    const raw = formData.get('links') as string
+    if (raw) links = JSON.parse(raw)
+  } catch { /* ignore */ }
+  links = links.filter(l => l.url?.trim())
+
+  const languages = (formData.getAll('languages') as string[]).filter(Boolean)
+
+  const { error } = await admin
+    .from('entrepreneurs')
+    .update({
+      first_name:    (formData.get('first_name')    as string)?.trim(),
+      last_name:     (formData.get('last_name')     as string)?.trim(),
+      contact_email: (formData.get('contact_email') as string)?.trim() || null,
+      contact_phone: (formData.get('contact_phone') as string)?.trim() || null,
+      photo_url:     photoUrl,
+      company_name:  (formData.get('company_name')  as string)?.trim(),
+      description:   (formData.get('description')   as string)?.trim() || null,
+      sector:        (formData.get('sector')        as string)         || null,
+      target:        (formData.get('target')        as string)         || null,
+      geo:           (formData.get('geo')           as string)         || null,
+      languages,
+      links,
+      status:        (formData.get('status')        as string)         || null,
+    })
+    .eq('edit_token', token)
+
+  if (error) {
+    console.error('updateEntrepreneurByToken:', error)
+    return { success: false, error: 'Une erreur est survenue, veuillez réessayer.' }
+  }
+
+  revalidatePath('/annuaire')
+  return { success: true }
+}
+
+export async function deleteEntrepreneurByToken(formData: FormData) {
+  const admin = createAdminClient()
+  const token = formData.get('edit_token') as string
+  if (!token) return
+
+  const { data: existing } = await admin
+    .from('entrepreneurs')
+    .select('id')
+    .eq('edit_token', token)
+    .single()
+  if (!existing) return
+
+  await admin.from('entrepreneurs').delete().eq('edit_token', token)
+  revalidatePath('/annuaire')
 }

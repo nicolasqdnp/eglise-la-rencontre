@@ -468,10 +468,14 @@ export async function sendEntrepreneurApprovalEmail(entrepreneur: {
   last_name: string
   company_name: string
   contact_email: string
+  edit_token?: string | null
 }) {
-  const resend  = getResend()
-  const siteUrl = getSiteUrl()
+  const resend   = getResend()
+  const siteUrl  = getSiteUrl()
   const ficheUrl = `${siteUrl}/annuaire#${entrepreneur.id}`
+  const editUrl  = entrepreneur.edit_token
+    ? `${siteUrl}/annuaire/modifier/${entrepreneur.edit_token}`
+    : null
 
   const { error } = await resend.emails.send({
     from:    'Église La Rencontre <noreply@egliselarencontre.fr>',
@@ -493,20 +497,27 @@ export async function sendEntrepreneurApprovalEmail(entrepreneur: {
             et est maintenant visible dans l'annuaire des entrepreneurs de l'Église La Rencontre.
           </p>
 
-          <a href="${ficheUrl}"
-             style="display:inline-block;background:#5A9EA6;color:#fff;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:28px;">
-            Voir ma fiche →
-          </a>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:28px;">
+            <a href="${ficheUrl}"
+               style="display:inline-block;background:#5A9EA6;color:#fff;padding:14px 24px;border-radius:12px;text-decoration:none;font-weight:600;font-size:15px;">
+              Voir ma fiche →
+            </a>
+            ${editUrl ? `<a href="${editUrl}"
+               style="display:inline-block;background:#f3f4f6;color:#1C2B2D;padding:14px 24px;border-radius:12px;text-decoration:none;font-weight:600;font-size:15px;">
+              ✏️ Modifier ma fiche
+            </a>` : ''}
+          </div>
 
-          <p style="margin:0 0 8px;font-size:13px;color:#6b7280;line-height:1.6;">
-            Tu souhaites modifier ou supprimer ta fiche ? Réponds à cet email ou contacte-nous à
-            <a href="mailto:contact@egliselarencontre.fr" style="color:#5A9EA6;">contact@egliselarencontre.fr</a>.
-          </p>
+          ${editUrl ? `<p style="margin:0 0 8px;font-size:13px;color:#6b7280;line-height:1.6;">
+            <strong>Conserve cet email !</strong> Le lien "Modifier ma fiche" est personnel et te permet
+            de mettre à jour ou supprimer ta fiche à tout moment, sans avoir besoin d'un compte.
+          </p>` : ''}
 
           <hr style="border:none;border-top:1px solid #f3f4f6;margin:24px 0;" />
 
           <p style="margin:0;font-size:12px;color:#9ca3af;">
-            Église La Rencontre · Lieusaint
+            Église La Rencontre · Lieusaint ·
+            <a href="mailto:contact@egliselarencontre.fr" style="color:#9ca3af;">contact@egliselarencontre.fr</a>
           </p>
         </div>
       </div>
