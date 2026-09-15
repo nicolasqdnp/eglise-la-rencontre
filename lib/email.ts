@@ -461,3 +461,56 @@ export async function sendEntrepreneurSubmissionNotification(entrepreneur: {
   if (error) console.error('[sendEntrepreneurSubmissionNotification]', error)
   // On ne throw pas — une erreur d'email ne doit pas bloquer la soumission
 }
+
+export async function sendEntrepreneurApprovalEmail(entrepreneur: {
+  id: string
+  first_name: string
+  last_name: string
+  company_name: string
+  contact_email: string
+}) {
+  const resend  = getResend()
+  const siteUrl = getSiteUrl()
+  const ficheUrl = `${siteUrl}/annuaire#${entrepreneur.id}`
+
+  const { error } = await resend.emails.send({
+    from:    'Église La Rencontre <noreply@egliselarencontre.fr>',
+    to:      entrepreneur.contact_email,
+    subject: `Ta fiche est en ligne — ${entrepreneur.company_name}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:540px;margin:0 auto;color:#1C2B2D;">
+        <div style="background:linear-gradient(135deg,#5A9EA6,#3D7D85);padding:32px 28px;border-radius:16px 16px 0 0;">
+          <p style="color:rgba(255,255,255,0.6);font-size:11px;letter-spacing:2px;text-transform:uppercase;margin:0 0 6px;">Annuaire des entrepreneurs</p>
+          <h1 style="color:#fff;font-size:24px;font-weight:300;margin:0;line-height:1.3;">Ta fiche est publiée ! 🎉</h1>
+        </div>
+
+        <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 16px 16px;padding:28px;">
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+            Bonjour ${entrepreneur.first_name},
+          </p>
+          <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#4b5563;">
+            Ta fiche <strong style="color:#1C2B2D;">${entrepreneur.company_name}</strong> a été validée
+            et est maintenant visible dans l'annuaire des entrepreneurs de l'Église La Rencontre.
+          </p>
+
+          <a href="${ficheUrl}"
+             style="display:inline-block;background:#5A9EA6;color:#fff;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:28px;">
+            Voir ma fiche →
+          </a>
+
+          <p style="margin:0 0 8px;font-size:13px;color:#6b7280;line-height:1.6;">
+            Tu souhaites modifier ou supprimer ta fiche ? Réponds à cet email ou contacte-nous à
+            <a href="mailto:contact@egliselarencontre.fr" style="color:#5A9EA6;">contact@egliselarencontre.fr</a>.
+          </p>
+
+          <hr style="border:none;border-top:1px solid #f3f4f6;margin:24px 0;" />
+
+          <p style="margin:0;font-size:12px;color:#9ca3af;">
+            Église La Rencontre · Lieusaint
+          </p>
+        </div>
+      </div>
+    `,
+  })
+  if (error) console.error('[sendEntrepreneurApprovalEmail]', error)
+}

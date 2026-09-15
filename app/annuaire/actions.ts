@@ -3,7 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { sendEntrepreneurSubmissionNotification } from '@/lib/email'
+import { sendEntrepreneurSubmissionNotification, sendEntrepreneurApprovalEmail } from '@/lib/email'
 import type { EntrepreneurLink } from './constants'
 
 /* ── Soumission publique ─────────────────────────────────── */
@@ -111,9 +111,28 @@ export async function approveEntrepreneur(formData: FormData) {
   const admin = await requireAdminPermission()
   if (!admin) return
   const id = formData.get('id') as string
+
+  // Récupérer les infos avant de valider (pour l'email de confirmation)
+  const { data: entrepreneur } = await admin
+    .from('entrepreneurs')
+    .select('id, first_name, last_name, company_name, contact_email')
+    .eq('id', id)
+    .single()
+
   await admin.from('entrepreneurs').update({ visible: true }).eq('id', id)
   revalidatePath('/annuaire')
   revalidatePath('/annuaire/admin')
+
+  // Email de confirmation à l'entrepreneur (fire-and-forget)
+  if (entrepreneur?.contact_email) {
+    sendEntrepreneurApprovalEmail({
+      id:            entrepreneur.id,
+      first_name:    entrepreneur.first_name,
+      last_name:     entrepreneur.last_name,
+      company_name:  entrepreneur.company_name,
+      contact_email: entrepreneur.contact_email,
+    }).catch(err => console.error('[annuaire] approval email failed:', err))
+  }
 }
 
 export async function hideEntrepreneur(formData: FormData) {

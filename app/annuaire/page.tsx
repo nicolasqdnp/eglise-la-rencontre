@@ -50,7 +50,7 @@ function LinkButton({ link }: { link: { type: string; url: string } }) {
 
 function EntrepreneurCard({ e }: { e: Entrepreneur }) {
   return (
-    <div className="bg-white rounded-2xl border border-dark/8 shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-shadow">
+    <div id={e.id} className="bg-white rounded-2xl border border-dark/8 shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-shadow">
       {/* Header */}
       <div className="flex items-start gap-3">
         <Avatar entrepreneur={e} />
