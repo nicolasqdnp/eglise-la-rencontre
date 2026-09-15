@@ -123,6 +123,7 @@ export function ProjectorScreen({ planId, songs: songsProp, settings: settingsPr
       setCountdown(prev => {
         if (prev === null || prev <= 1) {
           clearInterval(countdownRef.current!)
+          stopAudio()
           return null
         }
         return prev - 1

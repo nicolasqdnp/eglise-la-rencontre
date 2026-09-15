@@ -35,7 +35,7 @@ export function MediaPlayer({ youtubeUrl, audioUrl }: Props) {
               className="relative w-full aspect-video flex items-center justify-center bg-dark/5 hover:bg-dark/10 transition-colors group"
             >
               {thumbnail && (
-                <Image src={thumbnail} alt="" fill className="object-cover opacity-80" sizes="(max-width: 768px) 100vw, 600px" />
+                <Image src={thumbnail} alt="" fill sizes="(max-width:768px) 100vw, 50vw" className="object-cover opacity-80" />
               )}
               <div className="relative z-10 w-14 h-14 rounded-full bg-black/60 group-hover:bg-teal/80 flex items-center justify-center transition-colors">
                 <span className="text-white text-2xl ml-1">▶</span>
