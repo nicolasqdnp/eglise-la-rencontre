@@ -22,6 +22,7 @@ export const SECTORS = [
   'Juridique & conseil',
   'Art & créativité',
   'Éducation',
+  'Multi-activités',
   'Autre',
 ]
 
