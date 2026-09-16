@@ -30,7 +30,29 @@ export function EditEntrepreneurForm({
     const file = ev.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = r => setPreview(r.target?.result as string)
+    reader.onload = r => {
+      const src = r.target?.result as string
+      setPreview(src)
+      if (file.size > 500_000) {
+        const img = new Image()
+        img.onload = () => {
+          const maxW = 800
+          const scale = Math.min(1, maxW / img.width)
+          const canvas = document.createElement('canvas')
+          canvas.width  = img.width  * scale
+          canvas.height = img.height * scale
+          canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+          canvas.toBlob(blob => {
+            if (!blob || !fileRef.current) return
+            const compressed = new File([blob], file.name, { type: 'image/jpeg' })
+            const dt = new DataTransfer()
+            dt.items.add(compressed)
+            fileRef.current.files = dt.files
+          }, 'image/jpeg', 0.82)
+        }
+        img.src = src
+      }
+    }
     reader.readAsDataURL(file)
   }
 
