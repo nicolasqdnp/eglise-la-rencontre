@@ -1,6 +1,45 @@
+import { unstable_cache } from 'next/cache'
 import type { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
+
+/** Catalogue quasi-statique partagé par tous les plans/utilisateurs (équipes, postes, profils,
+ *  affectations aux équipes/postes, chants, annonces récurrentes) — mis en cache 5 min pour éviter
+ *  de le re-fetcher à chaque affichage/action sur un plan. Invalidé précisément par `revalidateTag`
+ *  dans les Server Actions qui modifient ces tables (voir admin/actions.ts, admin/equipes/[id]/actions.ts,
+ *  admin/eglises/actions.ts, admin/chants/actions.ts, admin/plans/[id]/annonces-actions.ts). */
+const getStableCatalog = unstable_cache(
+  async () => {
+    const admin = createAdminClient()
+    const [
+      { data: teams },
+      { data: allProfiles },
+      { data: teamMemberships },
+      { data: memberPositions },
+      { data: allSongs },
+      { data: recurringAnnouncements },
+    ] = await Promise.all([
+      // TODO: ajouter `allow_multiple` à la sélection une fois la migration 012 appliquée en base.
+      admin.from('teams').select('id, name, allows_guests, is_coordination, hide_positions, is_prayer_meeting, positions(id, name)').order('name'),
+      admin.from('profiles').select('id, first_name, last_name').order('first_name'),
+      admin.from('team_members').select('user_id, team_id'),
+      admin.from('member_positions').select('user_id, position_id'),
+      admin.from('songs').select('id, title, arrangements(id, name, chord_chart_key, keys_available)').order('title'),
+      admin.from('recurring_announcements').select('id, title, body, order_index, image_url, video_url, active').eq('active', true).order('order_index'),
+    ])
+    return {
+      teams: teams ?? [],
+      allProfiles: allProfiles ?? [],
+      teamMemberships: teamMemberships ?? [],
+      memberPositions: memberPositions ?? [],
+      allSongs: allSongs ?? [],
+      recurringAnnouncements: recurringAnnouncements ?? [],
+    }
+  },
+  ['plan-detail-stable-catalog'],
+  { revalidate: 300, tags: ['teams', 'profiles', 'team-members', 'member-positions', 'songs', 'recurring-announcements'] },
+)
 
 export const INVITE_EXT_ID = '00000000-0000-0000-0000-000000000001'
 
@@ -70,41 +109,34 @@ export async function getPlanDetail(
   userId: string,
   isAdmin: boolean,
 ): Promise<PlanDetail | null> {
+  // Fréquence récente : nb de services les 60 derniers jours par bénévole (calculé avant le
+  // Promise.all pour permettre de paralléliser `recentPlans` avec les autres requêtes ci-dessous).
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - 60)
+
   const [
     { data: plan },
     { data: rawAssignments },
-    { data: teams },
-    { data: allProfiles },
+    catalog,
     { data: blockouts },
-    { data: teamMemberships },
-    { data: memberPositions },
     { data: planSongs },
-    { data: allSongs },
     { data: announcements },
     { data: sermons },
     { data: videos },
-    { data: recurringAnnouncements },
+    { data: recentPlans },
   ] = await Promise.all([
     supabase.from('plans').select('id, title, service_date, notes, plan_type, team_ids, excluded_position_ids').eq('id', planId).single(),
     supabase
       .from('plan_assignments')
       .select('id, status, user_id, position_id, team_id, external_name, external_email, invitation_sent_at, profiles(first_name, last_name), positions(id, name, team_id)')
       .eq('plan_id', planId),
-    // TODO: ajouter `allow_multiple` à la sélection une fois la migration 012 appliquée en base.
-    supabase.from('teams').select('id, name, allows_guests, is_coordination, hide_positions, is_prayer_meeting, positions(id, name)').order('name'),
-    supabase.from('profiles').select('id, first_name, last_name').order('first_name'),
+    getStableCatalog(),
     supabase.from('blockout_dates').select('user_id, start_date, end_date'),
-    supabase.from('team_members').select('user_id, team_id'),
-    supabase.from('member_positions').select('user_id, position_id'),
     supabase
       .from('plan_songs')
       .select('id, order_index, key_selected, songs(id, title), arrangements(id, name, chord_chart, chord_chart_key)')
       .eq('plan_id', planId)
       .order('order_index'),
-    supabase
-      .from('songs')
-      .select('id, title, arrangements(id, name, chord_chart_key, keys_available)')
-      .order('title'),
     supabase
       .from('plan_announcements')
       .select('id, title, body, order_index, image_url, video_url')
@@ -120,24 +152,17 @@ export async function getPlanDetail(
       .select('id, title, url, order_index')
       .eq('plan_id', planId)
       .order('order_index'),
-    // Annonces récurrentes (globales, apparaissent sur tous les cultes) — pas de dépendance sur `plan`, chargées en parallèle
     supabase
-      .from('recurring_announcements')
-      .select('id, title, body, order_index, image_url, video_url, active')
-      .eq('active', true)
-      .order('order_index'),
+      .from('plans')
+      .select('id')
+      .gte('service_date', cutoff.toISOString().split('T')[0])
+      .neq('id', planId),
   ])
+
+  const { teams, allProfiles, teamMemberships, memberPositions, allSongs, recurringAnnouncements } = catalog
 
   if (!plan) return null
 
-  // Fréquence récente : nb de services les 60 derniers jours par bénévole
-  const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - 60)
-  const { data: recentPlans } = await supabase
-    .from('plans')
-    .select('id')
-    .gte('service_date', cutoff.toISOString().split('T')[0])
-    .neq('id', planId)
   const recentPlanIds = (recentPlans ?? []).map(p => p.id)
   const recentCountMap: Record<string, number> = {}
   if (recentPlanIds.length > 0) {

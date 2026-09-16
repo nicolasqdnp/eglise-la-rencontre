@@ -3,6 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { revalidateTag } from 'next/cache'
 import { sendInviteEmail } from '@/lib/email'
 
 export async function inviteBenevole(formData: FormData) {
@@ -51,6 +52,8 @@ export async function inviteBenevole(formData: FormData) {
     redirect(`/benevoles/admin/inviter?error=${encodeURIComponent(upsertError.message)}`)
   }
 
+  revalidateTag('profiles', 'max')
+
   if (teamIds.length > 0) {
     await admin.from('team_members').insert(
       teamIds.map(teamId => ({
@@ -60,6 +63,7 @@ export async function inviteBenevole(formData: FormData) {
         frequency: (formData.get(`frequency_${teamId}`) as string) || null,
       }))
     )
+    revalidateTag('team-members', 'max')
   }
 
   // Génère un lien d'invitation et envoie via Resend
@@ -252,6 +256,8 @@ export async function updateBenevoleAdmin(formData: FormData) {
     redirect(`/benevoles/admin/benevoles/${userId}/modifier?error=${encodeURIComponent(profileError.message)}`)
   }
 
+  revalidateTag('profiles', 'max')
+
   redirect(`/benevoles/admin/benevoles/${userId}?updated=1`)
 }
 
@@ -268,6 +274,10 @@ export async function deleteBenevole(formData: FormData) {
 
   const admin = createAdminClient()
   await admin.auth.admin.deleteUser(userId)
+
+  revalidateTag('profiles', 'max')
+  revalidateTag('team-members', 'max')
+  revalidateTag('member-positions', 'max')
 
   redirect('/benevoles/admin')
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import Link from 'next/link'
 import { deletePlan, sendSingleInvitation, excludePlanPosition } from './actions'
 import { PlanTimeEditor } from './PlanTimeEditor'
@@ -111,13 +112,16 @@ function OpenSlotCard({
 export function AssignmentBoard({ planId, detail, fillKey, isAdmin, flashError, flashSent, returnTo, onSlotClick }: Props) {
   const { plan, isRehearsal, teams, noTeamAssignments, planSongs, allSongs, announcements, recurringAnnouncements, sermons, videos } = detail
 
-  const visibleTeams = teams.filter(t => t.visible)
-  const positionTeams = visibleTeams.filter(t => t.positions.length > 0)
-  const totalPositions = positionTeams.reduce((s, t) => s + t.positions.length, 0)
-  const filledPositions = positionTeams.reduce((s, t) => {
-    const filledIds = new Set(t.assignments.map(a => a.position_id).filter(Boolean))
-    return s + t.positions.filter(p => filledIds.has(p.id)).length
-  }, 0)
+  const { visibleTeams, totalPositions, filledPositions } = useMemo(() => {
+    const visibleTeams = teams.filter(t => t.visible)
+    const positionTeams = visibleTeams.filter(t => t.positions.length > 0)
+    const totalPositions = positionTeams.reduce((s, t) => s + t.positions.length, 0)
+    const filledPositions = positionTeams.reduce((s, t) => {
+      const filledIds = new Set(t.assignments.map(a => a.position_id).filter(Boolean))
+      return s + t.positions.filter(p => filledIds.has(p.id)).length
+    }, 0)
+    return { visibleTeams, totalPositions, filledPositions }
+  }, [teams])
 
   const date = new Date(plan.service_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
 

@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 
 async function requireSuperAdmin() {
   const supabase = await createClient()
@@ -91,5 +91,7 @@ export async function createChurch(formData: FormData): Promise<{ ok: boolean; e
   )
 
   revalidatePath('/benevoles/admin/eglises')
+  revalidateTag('teams', 'max')
+  revalidateTag('profiles', 'max')
   return { ok: true }
 }
