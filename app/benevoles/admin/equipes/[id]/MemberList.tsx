@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { removeTeamMember, toggleMemberPosition, updateMemberRole } from './actions'
 import { frequencyLabels } from '@/lib/labels'
 
@@ -29,10 +29,10 @@ export function MemberList({
 }) {
   const [query, setQuery] = useState('')
 
-  const filtered = members.filter(m => {
+  const filtered = useMemo(() => members.filter(m => {
     const full = `${m.profiles?.first_name ?? ''} ${m.profiles?.last_name ?? ''}`.toLowerCase()
     return full.includes(query.toLowerCase())
-  })
+  }), [members, query])
 
   return (
     <div className="space-y-3">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useState, useMemo } from 'react'
 import { addTeamMember } from './actions'
 import { frequencyLabels } from '@/lib/labels'
 
@@ -45,10 +45,10 @@ function AddMemberRow({ teamId, profile }: { teamId: string; profile: Profile })
 export function MemberSearch({ teamId, profiles }: { teamId: string; profiles: Profile[] }) {
   const [query, setQuery] = useState('')
 
-  const filtered = profiles.filter(p => {
+  const filtered = useMemo(() => profiles.filter(p => {
     const full = `${p.first_name} ${p.last_name}`.toLowerCase()
     return full.includes(query.toLowerCase())
-  })
+  }), [profiles, query])
 
   return (
     <div className="bg-white rounded-2xl border border-teal/20 p-6 space-y-4">

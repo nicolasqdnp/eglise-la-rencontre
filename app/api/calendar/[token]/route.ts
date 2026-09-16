@@ -91,7 +91,9 @@ export async function GET(
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',
       'Content-Disposition': 'attachment; filename="eglise-planning.ics"',
-      'Cache-Control': 'no-cache, max-age=0',
+      // Pollé périodiquement par des clients calendrier externes (Google/Apple Calendar) —
+      // un court cache CDN évite de recalculer l'ICS complet à chaque poll.
+      'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=600',
     },
   })
 }

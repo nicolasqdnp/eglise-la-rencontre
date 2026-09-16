@@ -3,7 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 
 async function requireAdmin() {
   const supabase = await createClient()
@@ -47,6 +47,7 @@ export async function createSong(formData: FormData) {
 
   revalidatePath('/benevoles/admin/chants')
   revalidatePath('/benevoles/chants')
+  revalidateTag('songs', 'max')
   redirect(`/benevoles/admin/chants/${song.id}/modifier?created=1`)
 }
 
@@ -78,6 +79,7 @@ export async function updateSong(formData: FormData) {
   revalidatePath('/benevoles/admin/chants')
   revalidatePath('/benevoles/chants')
   revalidatePath(`/benevoles/chants/${songId}`)
+  revalidateTag('songs', 'max')
   redirect(`/benevoles/admin/chants/${songId}/modifier?saved=1`)
 }
 
@@ -90,5 +92,6 @@ export async function deleteSong(formData: FormData) {
 
   revalidatePath('/benevoles/admin/chants')
   revalidatePath('/benevoles/chants')
+  revalidateTag('songs', 'max')
   redirect('/benevoles/admin/chants?deleted=1')
 }

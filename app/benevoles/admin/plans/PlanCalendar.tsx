@@ -8,7 +8,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import frLocale from '@fullcalendar/core/locales/fr'
 import type { EventClickArg, DatesSetArg, EventContentArg, EventDropArg } from '@fullcalendar/core'
 import type { DateClickArg } from '@fullcalendar/interaction'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { movePlan, copyPlan } from './actions'
@@ -196,7 +196,7 @@ export function PlanCalendar({ plans, icalUrl, canManage, countByPlan = {} }: Pr
   }, [selectedPlanId])
 
   // Événements FullCalendar
-  const fcEvents = plans.map(p => ({
+  const fcEvents = useMemo(() => plans.map(p => ({
     id: p.id,
     title: p.title,
     start: p.service_date,
@@ -205,21 +205,21 @@ export function PlanCalendar({ plans, icalUrl, canManage, countByPlan = {} }: Pr
     backgroundColor: 'transparent',
     borderColor: 'transparent',
     textColor: 'inherit',
-  }))
+  })), [plans, countByPlan])
 
   const api = () => calRef.current?.getApi()
 
-  function switchView(v: CalView) {
+  const switchView = useCallback((v: CalView) => {
     setCurrentView(v)
     api()?.changeView(v)
-  }
+  }, [])
 
-  function onDatesSet(arg: DatesSetArg) {
+  const onDatesSet = useCallback((arg: DatesSetArg) => {
     const raw = arg.view.title
     setCalTitle(raw.charAt(0).toUpperCase() + raw.slice(1))
-  }
+  }, [])
 
-  async function onEventDrop(arg: EventDropArg) {
+  const onEventDrop = useCallback(async (arg: EventDropArg) => {
     const planId = arg.event.id
     setError(null)
 
@@ -248,41 +248,49 @@ export function PlanCalendar({ plans, icalUrl, canManage, countByPlan = {} }: Pr
       if (!res.ok) { arg.revert(); setError(res.error ?? 'Échec du déplacement.') }
       else router.refresh()
     }
-  }
+  }, [currentView, router])
 
-  function onDateClick(arg: DateClickArg) {
+  const onDateClick = useCallback((arg: DateClickArg) => {
     if (!canManage) return
     router.push(`/benevoles/admin/plans/nouveau?date=${arg.dateStr.split('T')[0]}`)
-  }
+  }, [canManage, router])
 
-  function onEventClick(arg: EventClickArg) {
+  const onEventClick = useCallback((arg: EventClickArg) => {
     arg.jsEvent.preventDefault()
     const id = arg.event.id
     setSelectedPlanId(id)
     setShowModal(true)
-  }
+  }, [])
+
+  const renderEvent = useCallback((arg: EventContentArg) => (
+    <EventPill arg={arg} selected={arg.event.id === selectedPlanId} />
+  ), [selectedPlanId])
 
   // ── Données sidebar ───────────────────────────────────────────────────────
-  const now = new Date()
-  const dow = now.getDay() === 0 ? 6 : now.getDay() - 1
-  const wStart = new Date(now); wStart.setDate(now.getDate() - dow); wStart.setHours(0, 0, 0, 0)
-  const wEnd   = new Date(wStart); wEnd.setDate(wStart.getDate() + 6); wEnd.setHours(23, 59, 59, 999)
+  const { upcoming, thisMonthCount, thisWeek, later, featuredId, monthEnd, monthName } = useMemo(() => {
+    const now = new Date()
+    const dow = now.getDay() === 0 ? 6 : now.getDay() - 1
+    const wStart = new Date(now); wStart.setDate(now.getDate() - dow); wStart.setHours(0, 0, 0, 0)
+    const wEnd   = new Date(wStart); wEnd.setDate(wStart.getDate() + 6); wEnd.setHours(23, 59, 59, 999)
 
-  const upcoming = [...plans]
-    .filter(p => new Date(p.service_date) >= now)
-    .sort((a, b) => a.service_date.localeCompare(b.service_date))
+    const upcoming = [...plans]
+      .filter(p => new Date(p.service_date) >= now)
+      .sort((a, b) => a.service_date.localeCompare(b.service_date))
 
-  const thisMonthCount = upcoming.filter(p => {
-    const d = new Date(p.service_date)
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-  }).length
+    const thisMonthCount = upcoming.filter(p => {
+      const d = new Date(p.service_date)
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    }).length
 
-  const thisWeek = upcoming.filter(p => { const d = new Date(p.service_date); return d >= wStart && d <= wEnd })
-  const later    = upcoming.filter(p => new Date(p.service_date) > wEnd).slice(0, 8)
-  const featuredId = thisWeek[0]?.id
+    const thisWeek = upcoming.filter(p => { const d = new Date(p.service_date); return d >= wStart && d <= wEnd })
+    const later    = upcoming.filter(p => new Date(p.service_date) > wEnd).slice(0, 8)
+    const featuredId = thisWeek[0]?.id
 
-  const monthEnd  = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-  const monthName = now.toLocaleDateString('fr-FR', { month: 'long' })
+    const monthEnd  = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+    const monthName = now.toLocaleDateString('fr-FR', { month: 'long' })
+
+    return { upcoming, thisMonthCount, thisWeek, later, featuredId, monthEnd, monthName }
+  }, [plans])
 
   function fmtDate(p: PlanItem, long = false) {
     return new Date(p.service_date).toLocaleDateString('fr-FR',
@@ -389,7 +397,7 @@ export function PlanCalendar({ plans, icalUrl, canManage, countByPlan = {} }: Pr
               eventDurationEditable={false}
               dateClick={canManage ? onDateClick : undefined}
               eventClick={onEventClick}
-              eventContent={(arg) => <EventPill arg={arg} selected={arg.event.id === selectedPlanId} />}
+              eventContent={renderEvent}
               datesSet={onDatesSet}
               height="auto"
               dayMaxEvents={4}

@@ -13,6 +13,38 @@ const WINDOWS = [
   { days: 1,  pendingOnly: false },
 ] as const
 
+/** Découpe un tableau en lots de taille `size` — évite de lancer des centaines d'appels
+ *  Auth Admin en parallèle d'un coup si un plan a beaucoup de bénévoles internes. */
+export function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = []
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size))
+  return out
+}
+
+type AdminClient = ReturnType<typeof createAdminClient>
+
+/** Résout en une fois (profils + emails Auth) tous les bénévoles internes d'un lot
+ *  d'affectations, au lieu d'un aller-retour séquentiel par affectation. */
+export async function resolveInternalUsers(admin: AdminClient, userIds: string[]) {
+  const uniqueIds = [...new Set(userIds)]
+  const profileMap = new Map<string, { first_name: string }>()
+  const emailMap = new Map<string, string>()
+  if (uniqueIds.length === 0) return { profileMap, emailMap }
+
+  const { data: profiles } = await admin.from('profiles').select('id, first_name').in('id', uniqueIds)
+  for (const p of profiles ?? []) profileMap.set(p.id, { first_name: p.first_name })
+
+  for (const batch of chunk(uniqueIds, 10)) {
+    const results = await Promise.all(batch.map(id => admin.auth.admin.getUserById(id)))
+    results.forEach(({ data }, i) => {
+      const email = data?.user?.email
+      if (email) emailMap.set(batch[i], email)
+    })
+  }
+
+  return { profileMap, emailMap }
+}
+
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -56,6 +88,11 @@ export async function GET(req: NextRequest) {
         // Invités externes exclus des relances J-2 (pending only)
         .neq('user_id', pendingOnly ? INVITE_EXT_ID : '00000000-0000-0000-0000-000000000000')
 
+      const internalUserIds = (assignments ?? [])
+        .filter(a => a.user_id !== INVITE_EXT_ID)
+        .map(a => a.user_id)
+      const { profileMap, emailMap } = await resolveInternalUsers(admin, internalUserIds)
+
       for (const a of assignments ?? []) {
         // Déduplication : sauter si ce rappel a déjà été envoyé
         const alreadySent = (a.reminder_sent_days as number[] | null ?? []).includes(days)
@@ -86,11 +123,8 @@ export async function GET(req: NextRequest) {
             })
           } else {
             // Bénévole interne
-            const [{ data: profile }, { data: authData }] = await Promise.all([
-              admin.from('profiles').select('first_name').eq('id', a.user_id).single(),
-              admin.auth.admin.getUserById(a.user_id),
-            ])
-            const email = authData?.user?.email
+            const profile = profileMap.get(a.user_id)
+            const email = emailMap.get(a.user_id)
             if (!email || !profile) continue
 
             await sendReminderEmail({

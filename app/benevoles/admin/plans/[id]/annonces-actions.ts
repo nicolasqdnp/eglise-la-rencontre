@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { revalidateTag } from 'next/cache'
 
 // Pas de redirect() dans les server actions : un redirect depuis une action
 // provoque une navigation et efface l'état React du composant client.
@@ -49,6 +50,7 @@ export async function addRecurringAnnouncement(
     title: title.trim() || null, body, order_index: nextIndex,
     image_url: imageUrl, video_url: videoUrl || null, active: true,
   }).select().single()
+  revalidateTag('recurring-announcements', 'max')
   return data as RecurringAnnouncement | null
 }
 
@@ -61,12 +63,14 @@ export async function updateRecurringAnnouncement(
   await admin.from('recurring_announcements')
     .update({ title: title.trim() || null, body, image_url: imageUrl, video_url: videoUrl || null })
     .eq('id', id)
+  revalidateTag('recurring-announcements', 'max')
 }
 
 export async function deleteRecurringAnnouncement(id: string) {
   const admin = await getAdminIfAllowed()
   if (!admin) return
   await admin.from('recurring_announcements').delete().eq('id', id)
+  revalidateTag('recurring-announcements', 'max')
 }
 
 export async function moveRecurringAnnouncement(id: string, direction: 'up' | 'down') {
@@ -86,6 +90,7 @@ export async function moveRecurringAnnouncement(id: string, direction: 'up' | 'd
     admin.from('recurring_announcements').update({ order_index: b.order_index }).eq('id', a.id),
     admin.from('recurring_announcements').update({ order_index: a.order_index }).eq('id', b.id),
   ])
+  revalidateTag('recurring-announcements', 'max')
 }
 
 export async function uploadAnnouncementImage(formData: FormData): Promise<string | null> {

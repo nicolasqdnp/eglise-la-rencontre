@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { deleteBenevole, resendInviteFromList } from './actions'
 import { IconEnvelope } from '@/app/benevoles/_components/Icons'
@@ -80,10 +80,10 @@ export function BenevoleList({ benevoles }: { benevoles: Benevole[] }) {
     return () => clearTimeout(t)
   }, [toast])
 
-  const filtered = benevoles.filter(b => {
+  const filtered = useMemo(() => benevoles.filter(b => {
     const full = `${b.first_name} ${b.last_name}`.toLowerCase()
     return full.includes(query.toLowerCase())
-  })
+  }), [benevoles, query])
 
   return (
     <div className="space-y-3">

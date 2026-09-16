@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 
 async function requireAdminOrLeader(teamId: string) {
   const supabase = await createClient()
@@ -45,6 +45,7 @@ export async function addTeamMember(_prevState: { error?: string } | null, formD
   if (error) return { error: error.message }
 
   revalidatePath(`/benevoles/admin/equipes/${teamId}`)
+  revalidateTag('team-members', 'max')
   return null
 }
 
@@ -58,8 +59,10 @@ export async function removeTeamMember(formData: FormData) {
   const { data: positions } = await admin.from('positions').select('id').eq('team_id', teamId)
   if (positions?.length) {
     await admin.from('member_positions').delete().eq('user_id', userId).in('position_id', positions.map(p => p.id))
+    revalidateTag('member-positions', 'max')
   }
   revalidatePath(`/benevoles/admin/equipes/${teamId}`)
+  revalidateTag('team-members', 'max')
 }
 
 export async function updateMemberRole(formData: FormData) {
@@ -90,4 +93,5 @@ export async function toggleMemberPosition(formData: FormData) {
     await admin.from('member_positions').delete().eq('user_id', userId).eq('position_id', positionId)
   }
   revalidatePath(`/benevoles/admin/equipes/${teamId}`)
+  revalidateTag('member-positions', 'max')
 }
