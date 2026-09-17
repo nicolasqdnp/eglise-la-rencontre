@@ -3,7 +3,7 @@
 import { useActionState, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateEntrepreneurByToken, deleteEntrepreneurByToken } from '../../actions'
-import { LINK_TYPES, SECTORS, type Entrepreneur } from '../../constants'
+import { LINK_TYPES, SECTORS, parseSectors, type Entrepreneur } from '../../constants'
 import { PhotoCropModal } from '../../components/PhotoCropModal'
 
 type Link = { type: string; url: string }
@@ -49,6 +49,14 @@ export function EditEntrepreneurForm({
 
   const [firstName, setFirstName] = useState(e.first_name)
   const [lastName,  setLastName]  = useState(e.last_name)
+
+  // Secteur (simple ou multi)
+  const initParsed = parseSectors(e.sector ?? null)
+  const [multiSector, setMultiSector]         = useState(initParsed.length > 1)
+  const [selectedSectors, setSelectedSectors] = useState<string[]>(initParsed)
+  function toggleSector(s: string) {
+    setSelectedSectors(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
+  }
 
   const initialLinks: Link[] = Array.isArray(e.links) && e.links.length > 0
     ? (e.links as Link[]) : [{ type: 'website', url: '' }]
@@ -215,12 +223,42 @@ export function EditEntrepreneurForm({
                 </div>
 
                 <div>
-                  <label className="block font-sans text-[10px] uppercase tracking-widest text-dark/40 mb-1.5">Secteur d'activité <span className="text-coral">*</span></label>
-                  <select name="sector" required defaultValue={e.sector ?? ''}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-dark/10 bg-sand text-dark font-sans text-sm focus:outline-none focus:ring-2 focus:ring-teal/20">
-                    <option value="">— Choisir —</option>
-                    {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  <label className="block font-sans text-[10px] uppercase tracking-widest text-dark/40 mb-2">Secteur d'activité <span className="text-coral">*</span></label>
+
+                  <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border-2 border-dark/10 hover:border-dark/20 transition-colors has-[:checked]:border-teal has-[:checked]:bg-teal/5 mb-3">
+                    <input type="checkbox" checked={multiSector}
+                      onChange={ev => { setMultiSector(ev.target.checked); setSelectedSectors([]) }}
+                      className="w-4 h-4 accent-teal shrink-0" />
+                    <div>
+                      <p className="font-sans text-sm font-semibold text-dark">Multi-activités</p>
+                      <p className="font-sans text-[10px] text-dark/40">Mon activité couvre plusieurs secteurs</p>
+                    </div>
+                  </label>
+
+                  {multiSector ? (
+                    <>
+                      <input type="hidden" name="sector" value={JSON.stringify(selectedSectors)} />
+                      <div className="flex flex-wrap gap-2">
+                        {SECTORS.map(s => (
+                          <label key={s} className="flex items-center gap-1.5 cursor-pointer px-3 py-1.5 rounded-full border border-dark/10 has-[:checked]:border-teal has-[:checked]:bg-teal/5 transition-colors">
+                            <input type="checkbox" checked={selectedSectors.includes(s)}
+                              onChange={() => toggleSector(s)}
+                              className="w-3.5 h-3.5 accent-teal" />
+                            <span className="font-sans text-sm text-dark">{s}</span>
+                          </label>
+                        ))}
+                      </div>
+                      {selectedSectors.length === 0 && (
+                        <p className="font-sans text-xs text-coral mt-2">Sélectionne au moins un secteur</p>
+                      )}
+                    </>
+                  ) : (
+                    <select name="sector" required defaultValue={initParsed[0] ?? ''}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-dark/10 bg-sand text-dark font-sans text-sm focus:outline-none focus:ring-2 focus:ring-teal/20">
+                      <option value="">— Choisir —</option>
+                      {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  )}
                 </div>
 
                 <div>

@@ -4,7 +4,21 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { sendEntrepreneurSubmissionNotification, sendEntrepreneurApprovalEmail } from '@/lib/email'
+import { parseSectors } from './constants'
 import type { EntrepreneurLink } from './constants'
+
+function normalizeSector(raw: string | null): string | null {
+  if (!raw) return null
+  try {
+    const arr = JSON.parse(raw)
+    if (Array.isArray(arr)) {
+      if (arr.length === 0) return null
+      if (arr.length === 1) return arr[0]
+      return raw // stocker le JSON pour multi-secteurs
+    }
+  } catch {}
+  return raw
+}
 
 /* ── Soumission publique ─────────────────────────────────── */
 
@@ -65,7 +79,7 @@ export async function submitEntrepreneur(
     photo_url:     photoUrl,
     company_name:  companyName,
     description:   (formData.get('description')   as string)?.trim() || null,
-    sector:        (formData.get('sector')        as string)         || null,
+    sector:        normalizeSector(formData.get('sector') as string | null),
     target:        (formData.get('target')        as string)         || null,
     geo:           (formData.get('geo')           as string)         || null,
     languages,
@@ -220,7 +234,7 @@ export async function updateEntrepreneurByToken(
       photo_url:     photoUrl,
       company_name:  (formData.get('company_name')  as string)?.trim(),
       description:   (formData.get('description')   as string)?.trim() || null,
-      sector:        (formData.get('sector')        as string)         || null,
+      sector:        normalizeSector(formData.get('sector') as string | null),
       target:        (formData.get('target')        as string)         || null,
       geo:           (formData.get('geo')           as string)         || null,
       languages,
@@ -290,7 +304,7 @@ export async function adminUpdateEntrepreneur(
       photo_url:     photoUrl,
       company_name:  (formData.get('company_name')  as string)?.trim(),
       description:   (formData.get('description')   as string)?.trim() || null,
-      sector:        (formData.get('sector')        as string)         || null,
+      sector:        normalizeSector(formData.get('sector') as string | null),
       target:        (formData.get('target')        as string)         || null,
       geo:           (formData.get('geo')           as string)         || null,
       languages,
