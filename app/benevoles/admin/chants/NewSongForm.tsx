@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 import { SongForm } from './SongForm'
-import { ShirImport } from './ShirImport'
-import { LtcAsaphImport } from './LtcAsaphImport'
+import { SongImport } from './SongImport'
 
 type ImportedSong = {
   title:  string
@@ -26,8 +25,7 @@ export function NewSongForm() {
     <div className="space-y-4">
       {/* Bouton import shir.fr */}
       <div className="flex items-center gap-3 flex-wrap">
-        <ShirImport onImport={handleImport} />
-        <LtcAsaphImport onImport={handleImport} />
+        <SongImport onImport={handleImport} />
         {imported && (
           <span className="font-sans text-xs text-teal/70">
             ✓ « {imported.title} » importé — vérifie et enregistre
