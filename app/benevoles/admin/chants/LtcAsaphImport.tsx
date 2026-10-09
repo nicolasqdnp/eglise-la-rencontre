@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { parseChordPro } from '@/lib/parseChordPro'
 
 type ParsedSong = {
   title:  string
@@ -12,6 +13,38 @@ type ParsedSong = {
 
 type Props = {
   onImport: (song: ParsedSong) => void
+}
+
+const SECTION_MAP: [RegExp, string][] = [
+  [/^refrain\s*\d*$/i,      '{start_of_chorus}'],
+  [/^chorus\s*\d*$/i,       '{start_of_chorus}'],
+  [/^couplet\s*\d*$/i,      '{start_of_verse}'],
+  [/^verse\s*\d*$/i,        '{start_of_verse}'],
+  [/^strophe\s*\d*$/i,      '{start_of_verse}'],
+  [/^pont\s*\d*$/i,         '{start_of_bridge}'],
+  [/^bridge\s*\d*$/i,       '{start_of_bridge}'],
+  [/^intro\s*\d*$/i,        '{start_of_verse}'],
+  [/^outro\s*\d*$/i,        '{start_of_verse}'],
+  [/^tag\s*\d*$/i,          '{start_of_verse}'],
+  [/^pré.?refrain\s*\d*$/i, '{start_of_verse}'],
+  [/^pre.?chorus\s*\d*$/i,  '{start_of_verse}'],
+]
+
+function ltcLyricsToChordPro(lyrics: string, title: string, artist: string): string {
+  const header = [
+    `{title: ${title}}`,
+    artist ? `{subtitle: ${artist}}` : null,
+  ].filter(Boolean).join('\n')
+
+  const processed = lyrics.split('\n').map(line => {
+    const t = line.trim()
+    for (const [re, directive] of SECTION_MAP) {
+      if (re.test(t)) return directive
+    }
+    return line
+  }).join('\n')
+
+  return `${header}\n\n${processed}`
 }
 
 export function LtcAsaphImport({ onImport }: Props) {
@@ -40,12 +73,18 @@ export function LtcAsaphImport({ onImport }: Props) {
       const res  = await fetch(`/api/ltcasaph?action=fetch&id=${id}`)
       const data = await res.json()
       if (data.error) { setError(`Impossible d'importer "${title}".`); return }
+
+      const songTitle  = data.title  || title
+      const songArtist = data.authors || ''
+      const chordPro   = ltcLyricsToChordPro(data.lyrics || '', songTitle, songArtist)
+      const parsed     = parseChordPro(chordPro)
+
       onImport({
-        title:  data.title  || title,
-        artist: data.authors || null,
-        key:    data.key    || null,
-        bpm:    data.bpm    || null,
-        chart:  data.chart  || '',
+        title:  parsed.title  || songTitle,
+        artist: parsed.artist || songArtist || null,
+        key:    parsed.key    || data.key   || null,
+        bpm:    parsed.bpm    || data.bpm   || null,
+        chart:  parsed.chart  || '',
       })
       setOpen(false)
     } catch { setError("Erreur lors de l'import.") }
@@ -73,7 +112,7 @@ export function LtcAsaphImport({ onImport }: Props) {
             <div className="flex items-center justify-between px-5 py-4 border-b border-teal/10">
               <div>
                 <h2 className="font-display text-lg text-dark font-light">Importer depuis LTC-Asaph</h2>
-                <p className="font-sans text-xs text-dark/40">~5000 chants chrétiens · paroles sans accords</p>
+                <p className="font-sans text-xs text-dark/40">~5000 chants chrétiens · accords inclus quand disponibles</p>
               </div>
               <button onClick={() => setOpen(false)} className="text-dark/30 hover:text-dark text-xl">×</button>
             </div>

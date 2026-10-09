@@ -2,17 +2,6 @@ import { NextRequest } from 'next/server'
 
 const BASE = 'https://db.ltc-asaph.com'
 
-/** Convertit les paroles brutes (paragraphes) en format chord_chart interne */
-function lyricsToChart(lyrics: string): string {
-  if (!lyrics.trim()) return ''
-  const paragraphs = lyrics.trim().split(/\n\s*\n/).filter(p => p.trim())
-  let n = 0
-  return paragraphs.map(p => {
-    n++
-    const lines = p.trim().split('\n').map(l => l.trim()).filter(Boolean)
-    return `[Couplet ${n}]\n${lines.join('\n')}`
-  }).join('\n\n')
-}
 
 type SongEntry = {
   legacy_id: number
@@ -71,10 +60,10 @@ export async function GET(req: NextRequest) {
       const key     = keyData?.key
         ? `${keyData.key}${keyData.scale === 'minor' ? 'm' : ''}`
         : null
-      const bpm   = attrs.tempo ? Number(attrs.tempo) : null
-      const chart = lyricsToChart(attrs.full_lyrics ?? '')
+      const bpm    = attrs.tempo ? Number(attrs.tempo) : null
+      const lyrics = attrs.full_lyrics ?? ''
 
-      return Response.json({ title, authors, key, bpm, chart })
+      return Response.json({ title, authors, key, bpm, lyrics })
     }
 
     return Response.json({ error: 'action inconnue' }, { status: 400 })
