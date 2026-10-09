@@ -64,7 +64,7 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
   const [extraSongs, setExtraSongs]     = useState<Song[]>([])
   // Bible
   const [bibleRef, setBibleRef]             = useState('')
-  const [bibleVersion, setBibleVersion]     = useState('lsg')
+  const [bibleVersion, setBibleVersion]     = useState('BDS')
   const [bibleFetching, setBibleFetching]   = useState(false)
   const [bibleResult, setBibleResult]       = useState<{ text: string; display: string; versionName: string } | null>(null)
   const [bibleError, setBibleError]         = useState<string | null>(null)
