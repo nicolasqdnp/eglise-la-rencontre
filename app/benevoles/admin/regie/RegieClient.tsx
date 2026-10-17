@@ -450,18 +450,23 @@ export default function RegieClient() {
             </div>
 
             <div>
-              <p className="text-xs font-semibold text-red-400 mb-2">Program</p>
+              <p className="text-xs font-semibold text-red-400 mb-2">
+                Program
+                {autoRunning && <span className="ml-2 text-amber-500/70 font-normal normal-case">— clic pour forcer</span>}
+              </p>
               <div className="grid grid-cols-4 gap-3">
                 {SOURCES.map(src => (
                   <button
                     key={src.id}
-                    onClick={() => send(`/program/${src.id}`, `prog-${src.id}`)}
-                    disabled={disabled || loading !== null || autoRunning}
-                    className={`py-4 rounded-xl font-bold text-base transition-all ${
+                    onClick={() => send(`/program/${src.id}`, `prog-${src.id}`, autoRunning ? { keepAuto: true } : undefined)}
+                    disabled={disabled || loading !== null}
+                    className={`py-4 rounded-xl font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                       status.program === src.id
                         ? 'bg-red-500 text-white shadow-lg shadow-red-500/40 scale-105'
-                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                    } disabled:opacity-40 disabled:cursor-not-allowed`}
+                        : autoRunning
+                          ? 'bg-gray-800 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10'
+                          : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    }`}
                   >
                     {src.label}
                   </button>
@@ -487,7 +492,7 @@ export default function RegieClient() {
             </div>
 
             {autoRunning && (
-              <p className="text-center text-xs text-gray-600 pt-1">Contrôle manuel désactivé pendant l&apos;autopilote</p>
+              <p className="text-center text-xs text-amber-600/60 pt-1">Preview / CUT / AUTO désactivés — clic sur Program pour forcer la caméra sans arrêter l&apos;autopilote</p>
             )}
           </div>
 

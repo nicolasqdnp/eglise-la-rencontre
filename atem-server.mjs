@@ -48,6 +48,8 @@ let connected = false
 let faceDetectionReady = false
 let faceDetectionEnabled = false
 let faceStatus = { 1: true, 2: true, 3: true, 4: true } // true = visage détecté
+let faceLossCount = 0    // nb de détections consécutives sans visage sur le program
+let faceDetecting = false // guard contre les appels concurrents
 
 // ── ATEM ──────────────────────────────────────────────────────────────────────
 
@@ -86,6 +88,8 @@ async function captureFrame() {
 
 async function runFaceDetection() {
   if (!faceDetectionReady || !faceDetectionEnabled) return
+  if (faceDetecting) return
+  faceDetecting = true
 
   let framePath
   try {
@@ -120,10 +124,35 @@ async function runFaceDetection() {
     if (detected || absent)
       console.log(`👁  Visages: ✅ ${detected || '—'}  |  ❌ ${absent || '—'}`)
 
+    // Switch anticipé si le program perd son visage (2 détections consécutives ≈ 3s)
+    if (auto.running && auto.config.useFaceDetection) {
+      const me = atem.state?.video?.mixEffects?.[0]
+      const currentProgram = me?.programInput
+      if (currentProgram && faceStatus[currentProgram] === false) {
+        faceLossCount++
+        if (faceLossCount >= 2) {
+          faceLossCount = 0
+          console.log(`👁 Visage perdu sur CAM${currentProgram} — switch anticipé`)
+          if (auto.timer) { clearTimeout(auto.timer); auto.timer = null }
+          if (auto.config.transition === 'auto') {
+            await atem.autoTransition()
+            await new Promise(r => setTimeout(r, 1500))
+          } else {
+            await atem.cut()
+          }
+          console.log(`🎬 Switch anticipé → CAM${auto.nextCamera} (visage perdu)`)
+          autoStep()
+        }
+      } else {
+        faceLossCount = 0
+      }
+    }
+
   } catch {
     // échec silencieux (device absent, frame corrompue…)
   } finally {
     if (framePath) try { unlinkSync(framePath) } catch {}
+    faceDetecting = false
   }
 }
 
@@ -202,6 +231,7 @@ function stopAuto() {
   auto.running = false
   auto.nextSwitchAt = null
   auto.nextCamera = null
+  faceLossCount = 0
   if (auto.timer) { clearTimeout(auto.timer); auto.timer = null }
   console.log('⏹️  Autopilote arrêté')
 }
@@ -271,9 +301,20 @@ const server = createServer(async (req, res) => {
   const programMatch = path.match(/^\/program\/(\d+)$/)
   if (req.method === 'POST' && programMatch) {
     if (!connected) return json(res, 503, { error: 'ATEM non connecté' })
-    stopAuto()
-    await atem.changeProgramInput(parseInt(programMatch[1]))
-    console.log(`Program → CAM${programMatch[1]}`)
+    const body = await readBody(req)
+    const input = parseInt(programMatch[1])
+    if (body.keepAuto && auto.running) {
+      // Override manuel : switch immédiat + autopilote relancé depuis cette caméra
+      if (auto.timer) { clearTimeout(auto.timer); auto.timer = null }
+      faceLossCount = 0
+      await atem.changeProgramInput(input)
+      console.log(`Program → CAM${input} (override autopilote)`)
+      autoStep()
+    } else {
+      stopAuto()
+      await atem.changeProgramInput(input)
+      console.log(`Program → CAM${input}`)
+    }
     return json(res, 200, { ok: true })
   }
 
