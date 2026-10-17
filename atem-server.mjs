@@ -345,6 +345,22 @@ const server = createServer(async (req, res) => {
     return json(res, 200, { ok: true })
   }
 
+  // GET /debug/audio  — diagnostic : état brut de l'audio ATEM
+  if (req.method === 'GET' && path === '/debug/audio') {
+    const safeStr = (v) => {
+      try { return JSON.parse(JSON.stringify(v, (_, val) =>
+        typeof val === 'number' && !isFinite(val) ? String(val) : val
+      )) } catch { return null }
+    }
+    return json(res, 200, {
+      connected,
+      audio: safeStr(atem.state?.audio),
+      fairlight: safeStr(atem.state?.fairlightAudio ?? atem.state?.fairlight),
+      audioKeys: Object.keys(atem.state?.audio ?? {}),
+      channelKeys: Object.keys(atem.state?.audio?.channels ?? {}),
+    })
+  }
+
   json(res, 404, { error: 'Not found' })
 })
 
