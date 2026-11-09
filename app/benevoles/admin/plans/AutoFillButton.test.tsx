@@ -76,3 +76,52 @@ describe('AutoFillButton — périmètre « équipes dont on est responsable »'
     expect(screen.getByRole('button', { name: /Valider \(1\)/ })).toBeInTheDocument()
   })
 })
+
+describe('AutoFillButton — choix des équipes à remplir', () => {
+  const TEAMS = [
+    { id: 'team-1', name: 'Louange', isMember: true },
+    { id: 'team-2', name: 'Accueil', isMember: false },
+    { id: 'team-3', name: 'Son', isMember: true },
+  ]
+  const okResult = { ok: true, proposals: [PROPOSAL], skipped: [], scopeTeamNames: ['Louange'] }
+
+  function openModal(teams = TEAMS) {
+    render(<AutoFillButton teams={teams} />)
+    fireEvent.click(screen.getByRole('button', { name: /Auto-remplissage/ }))
+  }
+
+  it('coche par défaut uniquement les équipes dont on est membre et les envoie au serveur', async () => {
+    computeMock.mockResolvedValue(okResult)
+    openModal()
+    expect(screen.getByRole('checkbox', { name: 'Louange' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Son' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Accueil' })).not.toBeChecked()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Générer' }))
+    await screen.findByText(/1 poste proposé/)
+    expect(computeMock).toHaveBeenCalledWith(expect.any(String), expect.any(String), ['team-1', 'team-3'])
+  })
+
+  it('permet de cocher une équipe dont on ne fait pas partie', async () => {
+    computeMock.mockResolvedValue(okResult)
+    openModal()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Accueil' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Générer' }))
+
+    await screen.findByText(/1 poste proposé/)
+    expect(computeMock).toHaveBeenCalledWith(expect.any(String), expect.any(String), ['team-1', 'team-3', 'team-2'])
+  })
+
+  it("rien n'est coché si on n'est membre d'aucune équipe : « Générer » reste désactivé", () => {
+    openModal(TEAMS.map(t => ({ ...t, isMember: false })))
+    expect(screen.getByRole('button', { name: 'Générer' })).toBeDisabled()
+  })
+
+  it('« Tout sélectionner » puis « Tout désélectionner »', () => {
+    openModal()
+    fireEvent.click(screen.getByRole('button', { name: 'Tout sélectionner' }))
+    expect(screen.getByRole('checkbox', { name: 'Accueil' })).toBeChecked()
+    fireEvent.click(screen.getByRole('button', { name: 'Tout désélectionner' }))
+    expect(screen.getByRole('button', { name: 'Générer' })).toBeDisabled()
+  })
+})

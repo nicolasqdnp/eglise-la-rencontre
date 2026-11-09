@@ -263,6 +263,8 @@ test.describe('5. Auto-remplissage', () => {
     const dates = modal.locator('input[type="date"]')
     await dates.nth(0).fill(from)
     await dates.nth(1).fill(to)
+    // Par défaut seules les équipes dont on fait partie sont cochées (l'admin de test n'en a aucune).
+    await modal.getByRole('button', { name: 'Tout sélectionner' }).click()
     await modal.getByRole('button', { name: 'Générer' }).click()
     await expect(page.getByText('Aperçu de l\'auto-remplissage')).toBeVisible({ timeout: 30_000 })
     return page.locator('div.fixed.inset-0').filter({ hasText: 'Aperçu' })

@@ -227,6 +227,44 @@ describe('computeAutoFillProposal — seules les équipes dont on est responsabl
     expect(result.ok).toBe(false)
   })
 
+  it('un administrateur qui ne coche que Accueil ne reçoit des propositions que pour Accueil', async () => {
+    setupTwoTeams([])
+    const result = await computeAutoFillProposal('2026-12-01', '2026-12-31', ['team-2'])
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.proposals.map(p => p.teamName)).toEqual(['Accueil'])
+    expect(result.skipped.map(s => s.teamName)).not.toContain('Louange')
+    expect(result.scopeTeamNames).toEqual(['Accueil'])
+  })
+
+  it('un éditeur peut choisir une seule de ses équipes', async () => {
+    createClientMock.mockResolvedValue(fakeSessionClient('editor'))
+    setupTwoTeams([ok([{ team_id: 'team-1' }, { team_id: 'team-2' }])])
+    const result = await computeAutoFillProposal('2026-12-01', '2026-12-31', ['team-1'])
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.proposals.map(p => p.teamName)).toEqual(['Louange'])
+  })
+
+  it("un éditeur qui force (requête forgée) une équipe dont il n'est pas responsable est refusé en bloc", async () => {
+    createClientMock.mockResolvedValue(fakeSessionClient('editor'))
+    setupTwoTeams([ok([{ team_id: 'team-1' }])])
+    const result = await computeAutoFillProposal('2026-12-01', '2026-12-31', ['team-1', 'team-2'])
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error).toMatch(/pas responsable de toutes les équipes/)
+  })
+
+  it('aucune équipe sélectionnée : refus (jamais de repli sur « toutes les équipes »)', async () => {
+    setupTwoTeams([])
+    const result = await computeAutoFillProposal('2026-12-01', '2026-12-31', [])
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error).toMatch(/au moins une équipe/)
+  })
+
   it('le périmètre reste appliqué quand aucun service n’existe sur la plage (résultat vide mais borné)', async () => {
     createClientMock.mockResolvedValue(fakeSessionClient('editor'))
     setupAdminClient({ teams: [ok(TWO_TEAMS)], plans: [ok([]), ok([])], team_members: [ok([{ team_id: 'team-2' }])] })
