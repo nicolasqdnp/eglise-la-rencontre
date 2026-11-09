@@ -52,17 +52,31 @@ function Modal({ children, onClose }: { children: React.ReactNode; onClose: () =
  *  une proposition côté serveur (`computeAutoFillProposal`, rien n'est écrit en base), l'affiche
  *  dans une modale éditable groupée par date, puis persiste via `commitAutoFillProposal` une
  *  fois validée. */
-export function AutoFillButton({ ledTeamsOnly = false }: { /** Éditeur : seules les équipes dont il est responsable sont planifiées (règle appliquée côté serveur). */ ledTeamsOnly?: boolean }) {
+export function AutoFillButton({ ledTeamsOnly = false, teams = [] }: {
+  /** Éditeur : seules les équipes dont il est responsable sont planifiées (règle appliquée côté serveur). */
+  ledTeamsOnly?: boolean
+  /** Équipes que l'utilisateur peut choisir de remplir (déjà filtrées selon ses droits) ; seules celles
+   *  dont il est membre (`isMember`) sont cochées par défaut. */
+  teams?: { id: string; name: string; isMember?: boolean }[]
+}) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<Step>('config')
   const [startDate, setStartDate] = useState(todayISO())
   const [endDate, setEndDate] = useState(todayISO(30))
+  // `null` = jamais touché : seules les équipes dont on fait partie sont cochées par défaut.
+  const [pickedTeamIds, setPickedTeamIds] = useState<string[] | null>(null)
   const [proposals, setProposals] = useState<AutoFillProposal[]>([])
   const [skipped, setSkipped] = useState<AutoFillSkipped[]>([])
   const [scopeTeamNames, setScopeTeamNames] = useState<string[] | null>(null)
   const [showSkipped, setShowSkipped] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const selectedTeamIds = pickedTeamIds ?? teams.filter(t => t.isMember).map(t => t.id)
+
+  function toggleTeam(id: string) {
+    setPickedTeamIds(selectedTeamIds.includes(id) ? selectedTeamIds.filter(t => t !== id) : [...selectedTeamIds, id])
+  }
 
   function close() {
     setOpen(false)
@@ -73,7 +87,7 @@ export function AutoFillButton({ ledTeamsOnly = false }: { /** Éditeur : seules
   async function generate() {
     setStep('loading')
     setError(null)
-    const res = await computeAutoFillProposal(startDate, endDate)
+    const res = await computeAutoFillProposal(startDate, endDate, teams.length > 0 ? selectedTeamIds : undefined)
     if (!res.ok) {
       setError(res.error)
       setStep('config')
@@ -174,11 +188,43 @@ export function AutoFillButton({ ledTeamsOnly = false }: { /** Éditeur : seules
                   />
                 </div>
               </div>
+              {teams.length > 0 && (
+                <fieldset>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <legend className="font-sans text-xs text-dark/50">Équipes à remplir</legend>
+                    <button
+                      type="button"
+                      onClick={() => setPickedTeamIds(selectedTeamIds.length === teams.length ? [] : teams.map(t => t.id))}
+                      className="font-sans text-xs text-teal-dark hover:underline"
+                    >
+                      {selectedTeamIds.length === teams.length ? 'Tout désélectionner' : 'Tout sélectionner'}
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {teams.map(t => (
+                      <label
+                        key={t.id}
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border font-sans text-sm cursor-pointer transition-colors ${
+                          selectedTeamIds.includes(t.id) ? 'border-teal bg-teal/10 text-teal-dark' : 'border-teal/30 text-dark/60 hover:bg-teal/5'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedTeamIds.includes(t.id)}
+                          onChange={() => toggleTeam(t.id)}
+                          className="sr-only"
+                        />
+                        {t.name}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
               {error && <p className="font-sans text-xs text-red-500">{error}</p>}
               <button
                 type="button"
                 onClick={generate}
-                disabled={step === 'loading'}
+                disabled={step === 'loading' || (teams.length > 0 && selectedTeamIds.length === 0)}
                 className="w-full py-3 bg-teal text-white rounded-lg font-sans text-sm font-semibold hover:bg-teal-dark transition-colors disabled:opacity-60"
               >
                 {step === 'loading' ? 'Génération…' : 'Générer'}

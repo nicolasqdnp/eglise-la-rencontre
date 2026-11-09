@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { exclusiveEndDate } from './frequency'
 import { fetchBlockouts, parisDay } from '@/lib/availability'
-import { resolveAutoFillScope } from './scope'
+import { resolveAutoFillScope, narrowAutoFillScope } from './scope'
 import {
   buildAutoFillProposal,
   type AutoFillProposal,
@@ -56,15 +56,19 @@ type Result =
  *  remonter zéro plan/équipe/profil. Ce module suit ici la même convention que le reste de
  *  `admin/plans` (`getStableCatalog()` dans getPlanDetail.ts, et la page liste des plans) qui ne
  *  filtre pas non plus par église — cohérent tant que l'app reste utilisée par une seule église. */
-export async function computeAutoFillProposal(startDate: string, endDate: string): Promise<Result> {
+export async function computeAutoFillProposal(startDate: string, endDate: string, teamIds?: string[]): Promise<Result> {
   const { admin, userId, permission } = await requireAdmin()
 
   if (!startDate || !endDate || startDate > endDate) {
     return { ok: false, error: 'Plage de dates invalide.' }
   }
 
-  // Un éditeur ne planifie que les équipes dont il est responsable (un admin, toutes).
-  const scope = await resolveAutoFillScope(admin, userId, permission)
+  // Un éditeur ne planifie que les équipes dont il est responsable (un admin, toutes), et parmi
+  // elles seulement celles que l'utilisateur a cochées.
+  const allowedScope = await resolveAutoFillScope(admin, userId, permission)
+  if (!allowedScope.ok) return { ok: false, error: allowedScope.error }
+  // Équipes choisies dans la modale : toujours recoupées avec le périmètre autorisé côté serveur.
+  const scope = narrowAutoFillScope(allowedScope.teamIds, teamIds)
   if (!scope.ok) return { ok: false, error: scope.error }
 
   // `service_date` est un timestamptz : la borne de fin doit être EXCLUSIVE (lendemain à 00:00)

@@ -13,6 +13,7 @@ import { PlanWorkspaceData } from './PlanWorkspaceData'
 import { WorkspaceSkeleton } from './WorkspaceSkeleton'
 import { MyAssignmentQuickActions } from './RespondAssignmentButtons'
 import { AutoFillButton } from './AutoFillButton'
+import { listAutoFillTeams } from './autofill/scope'
 
 export type PlanItem = {
   id: string
@@ -50,6 +51,10 @@ export default async function PlansPage({
   const isAdmin   = ['admin', 'super_admin'].includes(me?.permission ?? '')
   const isEditor  = me?.permission === 'editor'
   const canManage = isAdmin || isEditor
+
+  // Équipes proposées à l'auto-remplissage : toutes pour un admin, celles dont on est responsable
+  // pour un éditeur (le serveur re-vérifie à chaque génération/validation).
+  const autoFillTeams = canManage ? await listAutoFillTeams(admin, user.id, me?.permission ?? '') : []
 
   // past dépend de canManage et view → séquentiel mais sur une seule requête
   const { data: past } = await (canManage
@@ -273,7 +278,7 @@ export default async function PlansPage({
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <PlanningViewToggle current={view} showTeam={canManage} className="hidden md:flex" />
-            {canManage && <AutoFillButton ledTeamsOnly={!isAdmin} />}
+            {canManage && <AutoFillButton ledTeamsOnly={!isAdmin} teams={autoFillTeams} />}
             {canManage && (
               <Link
                 href="/benevoles/admin/plans/nouveau"

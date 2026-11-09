@@ -25,6 +25,7 @@ async function removeSideTeam(name: string) {
   const { data } = await db.from('teams').select('id, positions(id)').eq('name', name)
   for (const t of data ?? []) {
     for (const p of t.positions ?? []) must(await db.from('plan_assignments').delete().eq('position_id', p.id), 'del assignments')
+    must(await db.from('team_members').delete().eq('team_id', t.id), 'del team_members')
     must(await db.from('plans').update({ team_ids: null }).not('id', 'is', null), 'reset team_ids')
     must(await db.from('teams').delete().eq('id', t.id), 'del team')
   }
@@ -159,18 +160,36 @@ test.describe('B. Auto-remplissage limité aux équipes dont on est responsable'
     await db.from('profiles').update({ permission: 'viewer' }).eq('email', 'alice@indispo.test')
   })
 
-  async function openAutofill(page: Page, from: string, to: string, generate = true) {
+  /** `teams` : `'all'` clique « Tout sélectionner » ; une liste ajuste les cases (coche/décoche pour obtenir
+   *  EXACTEMENT ces équipes) ; absent = on garde la sélection par défaut de la modale. */
+  async function openAutofill(page: Page, from: string, to: string, generate = true, teams?: 'all' | string[]) {
     await page.goto('/benevoles/admin/plans')
     await page.locator('button:has-text("Auto-remplissage")').filter({ visible: true }).first().click()
     const modal = page.locator('div.fixed.inset-0').filter({ hasText: 'Auto-remplissage du planning' })
     const dates = modal.locator('input[type="date"]')
     await dates.nth(0).fill(from)
     await dates.nth(1).fill(to)
+    if (teams === 'all') await modal.getByRole('button', { name: 'Tout sélectionner' }).click()
+    else if (teams) {
+      for (const name of await teamChoices(modal)) {
+        const box = modal.getByRole('checkbox', { name, exact: true })
+        if ((await box.isChecked()) !== teams.includes(name)) await modal.locator('label').filter({ hasText: name }).click()
+      }
+    }
     if (generate) {
       await modal.getByRole('button', { name: 'Générer' }).click()
       await expect(page.getByText('Aperçu de l\'auto-remplissage')).toBeVisible({ timeout: 30_000 })
     }
     return page.locator('div.fixed.inset-0').filter({ hasText: generate ? 'Aperçu' : 'Auto-remplissage du planning' })
+  }
+
+  /** Noms des équipes proposées (pastilles) dans la modale de configuration. */
+  const teamChoices = async (modal: ReturnType<Page['locator']>) =>
+    (await modal.locator('fieldset label').allTextContents()).map(t => t.trim())
+  const checkedTeams = async (modal: ReturnType<Page['locator']>) => {
+    const out: string[] = []
+    for (const name of await teamChoices(modal)) if (await modal.getByRole('checkbox', { name, exact: true }).isChecked()) out.push(name)
+    return out
   }
 
   const bothTeamsPlan = (refs: { louange: string }) =>
@@ -179,10 +198,11 @@ test.describe('B. Auto-remplissage limité aux équipes dont on est responsable'
   test('B.1 un administrateur se voit proposer TOUTES les équipes', async ({ refs, as }) => {
     await bothTeamsPlan(refs)
     const admin = await as('admin')
-    const modal = await openAutofill(admin, '2026-11-08', '2026-11-08')
+    const modal = await openAutofill(admin, '2026-11-08', '2026-11-08', true, 'all')
     await expect(modal.getByText('Louange · Piano')).toHaveCount(1)
     await expect(modal.getByText('Régie test · Hôte')).toHaveCount(1)
-    await expect(modal.getByText(/Équipes planifiées/)).toHaveCount(0)
+    await expect(modal.getByText(/Équipes planifiées : .*Louange/)).toBeVisible()
+    await expect(modal.getByText(/Équipes planifiées : .*Régie test/)).toBeVisible()
   })
 
   test('B.2 un éditeur responsable de Louange ne reçoit QUE Louange, et la validation n’insère que Louange', async ({ refs, as }) => {
@@ -248,5 +268,95 @@ test.describe('B. Auto-remplissage limité aux équipes dont on est responsable'
     await modal.getByRole('button', { name: 'Générer' }).click()
     await expect(modal.getByText(/responsable d'aucune équipe/)).toBeVisible({ timeout: 20_000 })
     await expect(alice.getByText('Aperçu de l\'auto-remplissage')).toHaveCount(0)
+  })
+
+  // ─────────── Choix des équipes à remplir ───────────
+
+  test('B.5 un admin qui n’est dans aucune équipe : rien de coché par défaut, « Générer » désactivé', async ({ refs, as }) => {
+    await bothTeamsPlan(refs)
+    const admin = await as('admin')
+    const modal = await openAutofill(admin, '2026-11-08', '2026-11-08', false)
+    expect((await teamChoices(modal)).sort()).toEqual(['Accueil', 'Louange', SIDE].sort())
+    expect(await checkedTeams(modal)).toEqual([])
+    await expect(modal.getByRole('button', { name: 'Générer' })).toBeDisabled()
+    await modal.locator('label').filter({ hasText: 'Louange' }).click()
+    await expect(modal.getByRole('button', { name: 'Générer' })).toBeEnabled()
+  })
+
+  test('B.6 un admin membre d’une équipe : seule elle est cochée par défaut, et seule elle est remplie', async ({ refs, as }) => {
+    const plan = await bothTeamsPlan(refs)
+    must(await db.from('team_members').upsert({ user_id: refs.ids.admin, team_id: side.team, role: 'member' }, { onConflict: 'user_id,team_id' }), 'membership')
+    const admin = await as('admin')
+    const modal = await openAutofill(admin, '2026-11-08', '2026-11-08', false)
+    expect(await checkedTeams(modal)).toEqual([SIDE])
+
+    await modal.getByRole('button', { name: 'Générer' }).click()
+    await expect(admin.getByText('Aperçu de l\'auto-remplissage')).toBeVisible({ timeout: 30_000 })
+    const preview = admin.locator('div.fixed.inset-0').filter({ hasText: 'Aperçu' })
+    await expect(preview.getByText('Régie test · Hôte')).toHaveCount(1)
+    await expect(preview.getByText(/Louange ·/)).toHaveCount(0)
+    await expect(preview.getByText(/Équipes planifiées : Régie test$/)).toBeVisible()
+
+    const done = waitForServerAction(admin)
+    await preview.getByRole('button', { name: /^Valider/ }).click()
+    await done
+    await expect.poll(async () => (await assignmentsOf(plan.id)).length, { timeout: 20_000 }).toBe(1)
+    expect((await assignmentsOf(plan.id)).every((a: { team_id: string }) => a.team_id === side.team), 'seule l’équipe cochée doit être planifiée').toBe(true)
+  })
+
+  test('B.7 un admin peut décocher/cocher : Louange seule, puis rien d’autre n’est écrit', async ({ refs, as }) => {
+    const plan = await bothTeamsPlan(refs)
+    const admin = await as('admin')
+    const modal = await openAutofill(admin, '2026-11-08', '2026-11-08', true, ['Louange'])
+    await expect(modal.getByText('Louange · Piano')).toHaveCount(1)
+    await expect(modal.getByText(/Régie test ·/)).toHaveCount(0)
+    const done = waitForServerAction(admin)
+    await modal.getByRole('button', { name: /^Valider/ }).click()
+    await done
+    await expect.poll(async () => (await assignmentsOf(plan.id)).length, { timeout: 20_000 }).toBeGreaterThan(0)
+    expect((await assignmentsOf(plan.id)).every((a: { team_id: string }) => a.team_id === refs.louange)).toBe(true)
+  })
+
+  test('B.8 un éditeur : coché par défaut = ses équipes ; une équipe où il est simple membre n’est pas proposée', async ({ refs, as }) => {
+    await bothTeamsPlan(refs)
+    // Éditeur responsable de Louange (graine) ET simple membre d'Accueil et de l'équipe annexe.
+    must(await db.from('team_members').upsert({ user_id: refs.ids.editor, team_id: refs.accueil, role: 'member' }, { onConflict: 'user_id,team_id' }), 'membership accueil')
+    must(await db.from('team_members').upsert({ user_id: refs.ids.editor, team_id: side.team, role: 'member' }, { onConflict: 'user_id,team_id' }), 'membership side')
+    try {
+      const editor = await as('editor')
+      const modal = await openAutofill(editor, '2026-11-08', '2026-11-08', false)
+      expect(await teamChoices(modal)).toEqual(['Louange'])
+      expect(await checkedTeams(modal)).toEqual(['Louange'])
+      await expect(modal.getByRole('button', { name: 'Tout désélectionner' })).toBeVisible()
+    } finally {
+      must(await db.from('team_members').delete().eq('user_id', refs.ids.editor).in('team_id', [refs.accueil, side.team]), 'cleanup')
+    }
+  })
+
+  test('B.9 requête forgée à la génération : un éditeur ne peut pas demander une équipe dont il n’est pas responsable', async ({ refs, as }) => {
+    await bothTeamsPlan(refs)
+    const editor = await as('editor')
+    let captured: { url: string; headers: Record<string, string>; body: string } | null = null
+    editor.on('request', req => {
+      const body = req.postData()
+      if (req.method() !== 'POST' || !body?.includes('2026-11-08')) return
+      void req.allHeaders().then(headers => {
+        if (headers['next-action'] && !captured) captured = { url: req.url(), headers, body }
+      })
+    })
+    const modal = await openAutofill(editor, '2026-11-08', '2026-11-08')
+    await expect(modal.getByText('Louange · Piano')).toHaveCount(1)
+    await expect.poll(() => captured, { timeout: 15_000 }).not.toBeNull()
+
+    const sent = captured!
+    expect(sent.body, 'la requête de génération doit porter l’équipe choisie').toContain(refs.louange)
+    const forgedBody = sent.body.split(refs.louange).join(side.team)
+    const forgedHeaders = Object.fromEntries(
+      ['next-action', 'content-type', 'accept', 'next-router-state-tree', 'next-url'].filter(h => sent.headers[h]).map(h => [h, sent.headers[h]]),
+    )
+    const response = await editor.context().request.post(sent.url, { headers: forgedHeaders, data: forgedBody })
+    const text = await response.text()
+    expect(text).toMatch(/pas responsable de toutes les équipes/)
+    expect(text, 'aucune proposition ne doit fuiter pour l’équipe interdite').not.toContain('Hôte')
   })
 })

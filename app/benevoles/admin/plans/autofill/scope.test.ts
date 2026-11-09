@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { ok, makeFakeSupabase } from '@/test/helpers/fakeSupabase'
-import { resolveAutoFillScope } from './scope'
+import { resolveAutoFillScope, narrowAutoFillScope, listAutoFillTeams } from './scope'
 
 const adminWith = (team_members: ReturnType<typeof ok>[] | { data: null; error: { message: string } }[]) =>
   makeFakeSupabase({ team_members: team_members as never }) as never
@@ -36,5 +36,62 @@ describe('resolveAutoFillScope', () => {
       const scope = await resolveAutoFillScope(adminWith([ok([{ team_id: 'louange' }])]), 'u1', permission)
       expect(scope).toEqual({ ok: true, teamIds: ['louange'] })
     }
+  })
+})
+
+describe('narrowAutoFillScope', () => {
+  it('sans choix, garde tout le périmètre autorisé', () => {
+    expect(narrowAutoFillScope(null, undefined)).toEqual({ ok: true, teamIds: null })
+    expect(narrowAutoFillScope(['a', 'b'], undefined)).toEqual({ ok: true, teamIds: ['a', 'b'] })
+  })
+
+  it('un admin (périmètre null) peut choisir n’importe quelles équipes', () => {
+    expect(narrowAutoFillScope(null, ['a', 'a', 'c'])).toEqual({ ok: true, teamIds: ['a', 'c'] })
+  })
+
+  it('un éditeur peut choisir un sous-ensemble de ses équipes', () => {
+    expect(narrowAutoFillScope(['a', 'b'], ['b'])).toEqual({ ok: true, teamIds: ['b'] })
+  })
+
+  it('refuse toute équipe hors périmètre, même mélangée à des équipes autorisées', () => {
+    const r = narrowAutoFillScope(['a', 'b'], ['a', 'z'])
+    expect(r.ok).toBe(false)
+  })
+
+  it('refuse une sélection vide (jamais de repli sur « tout »)', () => {
+    expect(narrowAutoFillScope(null, []).ok).toBe(false)
+    expect(narrowAutoFillScope(['a'], []).ok).toBe(false)
+  })
+})
+
+describe('listAutoFillTeams', () => {
+  it('un admin obtient toutes les équipes, avec isMember pour celles dont il fait partie', async () => {
+    const admin = makeFakeSupabase({
+      teams: [ok([{ id: 't1', name: 'Accueil' }, { id: 't2', name: 'Louange' }])],
+      team_members: [ok([{ team_id: 't2' }])],
+    }) as never
+    expect(await listAutoFillTeams(admin, 'u1', 'admin')).toEqual([
+      { id: 't1', name: 'Accueil', isMember: false },
+      { id: 't2', name: 'Louange', isMember: true },
+    ])
+  })
+
+  it('un éditeur obtient ses équipes dirigées ; isMember reflète son appartenance', async () => {
+    const admin = makeFakeSupabase({
+      team_members: [ok([{ team_id: 't1' }]), ok([{ team_id: 't1' }, { team_id: 't9' }])],
+      teams: [ok([{ id: 't1', name: 'Accueil' }])],
+    }) as never
+    expect(await listAutoFillTeams(admin, 'u1', 'editor')).toEqual([{ id: 't1', name: 'Accueil', isMember: true }])
+  })
+
+  it('un éditeur sans équipe dirigée n’obtient rien (et aucune requête sur teams)', async () => {
+    const admin = makeFakeSupabase({ team_members: [ok([])] })
+    expect(await listAutoFillTeams(admin as never, 'u1', 'editor')).toEqual([])
+    expect(admin.calls).toEqual(['team_members'])
+  })
+
+  it('fail-closed : lecture des responsabilités en échec → aucune équipe', async () => {
+    const admin = makeFakeSupabase({ team_members: [{ data: null, error: { message: 'db down' } }] }) as never
+    expect(await listAutoFillTeams(admin, 'u1', 'editor')).toEqual([])
   })
 })
