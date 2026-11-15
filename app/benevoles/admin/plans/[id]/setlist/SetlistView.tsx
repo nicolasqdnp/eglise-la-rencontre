@@ -87,6 +87,15 @@ export function SetlistView({ planId, planTitle, songs, announcements, sermons, 
   const router = useRouter()
   const [activeIdx, setActiveIdx] = useState(0)
   const [mobileView, setMobileView] = useState<'list' | 'chart'>('list')
+
+  // Le layout parent a pb-28 sur mobile → le document dépasse de 112px → page scrollable →
+  // l'entête de l'aside (bouton batteur) monte hors viewport. On verrouille le scroll ici.
+  useEffect(() => {
+    const prev = document.documentElement.style.overflow
+    window.scrollTo(0, 0)
+    document.documentElement.style.overflow = 'hidden'
+    return () => { document.documentElement.style.overflow = prev }
+  }, [])
   const [drummerMode, setDrummerMode] = useState(false)
   const [projecting, setProjecting]       = useState(autoProjection ?? false)
   const [styleModalSong, setStyleModalSong] = useState<Song | null>(null)
@@ -277,7 +286,13 @@ export function SetlistView({ planId, planTitle, songs, announcements, sermons, 
               ← Liste
             </button>
             <p className="font-sans text-sm text-dark/50 truncate flex-1">{planTitle}</p>
-            <span className="font-sans text-xs text-dark/50 tabular-nums shrink-0">{songs.length} chant{songs.length > 1 ? 's' : ''}</span>
+            <label className="inline-flex items-center gap-1.5 cursor-pointer select-none shrink-0" title="Mode batteur">
+              <input type="checkbox" checked={drummerMode} onChange={e => setDrummerMode(e.target.checked)} className="sr-only" />
+              <span className={`w-7 h-4 rounded-full transition-colors flex items-center px-0.5 ${drummerMode ? 'bg-teal' : 'bg-dark/20'}`}>
+                <span className={`w-3 h-3 rounded-full bg-white shadow transition-transform ${drummerMode ? 'translate-x-3' : 'translate-x-0'}`} />
+              </span>
+              <span className="font-sans text-xs text-dark/50">🥁</span>
+            </label>
           </div>
 
           {/* Scroll continu : tous les chants empilés */}
