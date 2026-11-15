@@ -107,22 +107,33 @@ export function SetlistView({ planId, planTitle, songs, announcements, sermons, 
     return () => { document.documentElement.style.overflow = prev }
   }, [])
 
-  // Empêche la mise en veille de l'écran pendant la setlist (iOS 16.4+, Android Chrome).
+  // Wake lock — empêche la mise en veille de l'écran (iOS 16.4+, Android Chrome).
+  const [wakeLockEnabled, setWakeLockEnabled] = useState(true)
+  const [wakeLockSupported, setWakeLockSupported] = useState(false)
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null)
   useEffect(() => {
     if (!('wakeLock' in navigator)) return
-    let lock: WakeLockSentinel | null = null
+    setWakeLockSupported(true)
+    type Nav = Navigator & { wakeLock: { request: (t: string) => Promise<WakeLockSentinel> } }
     async function acquire() {
-      try { lock = await (navigator as Navigator & { wakeLock: { request: (t: string) => Promise<WakeLockSentinel> } }).wakeLock.request('screen') } catch {}
+      try { wakeLockRef.current = await (navigator as Nav).wakeLock.request('screen') } catch {}
     }
-    acquire()
-    // iOS libère le wake lock quand l'onglet passe en arrière-plan ; on le réacquiert au retour.
-    const onVisible = () => { if (document.visibilityState === 'visible') acquire() }
+    if (wakeLockEnabled) {
+      acquire()
+    } else {
+      wakeLockRef.current?.release().catch(() => {})
+      wakeLockRef.current = null
+    }
+    // iOS libère le lock quand l'onglet passe en arrière-plan ; on le réacquiert au retour.
+    const onVisible = () => { if (document.visibilityState === 'visible' && wakeLockEnabled) acquire() }
     document.addEventListener('visibilitychange', onVisible)
     return () => {
       document.removeEventListener('visibilitychange', onVisible)
-      lock?.release().catch(() => {})
+      wakeLockRef.current?.release().catch(() => {})
+      wakeLockRef.current = null
     }
-  }, [])
+  }, [wakeLockEnabled])
+
   const [drummerMode, setDrummerMode] = useState(false)
   const [projecting, setProjecting]       = useState(autoProjection ?? false)
   const [styleModalSong, setStyleModalSong] = useState<Song | null>(null)
@@ -208,6 +219,22 @@ export function SetlistView({ planId, planTitle, songs, announcements, sermons, 
             <p className="font-sans text-xs text-dark/40">{songs.length} chant{songs.length > 1 ? 's' : ''}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {/* Anti-veille */}
+            {wakeLockSupported && (
+              <label className="inline-flex items-center gap-1.5 cursor-pointer select-none" title={wakeLockEnabled ? 'Mise en veille bloquée — cliquer pour désactiver' : 'Cliquer pour bloquer la mise en veille'}>
+                <input
+                  type="checkbox"
+                  checked={wakeLockEnabled}
+                  onChange={e => setWakeLockEnabled(e.target.checked)}
+                  className="sr-only"
+                />
+                <span className={`w-7 h-4 rounded-full transition-colors flex items-center px-0.5 ${wakeLockEnabled ? 'bg-teal' : 'bg-dark/20'}`}>
+                  <span className={`w-3 h-3 rounded-full bg-white shadow transition-transform ${wakeLockEnabled ? 'translate-x-3' : 'translate-x-0'}`} />
+                </span>
+                <span className="font-sans text-xs text-dark/50">☀️</span>
+              </label>
+            )}
+
             {/* Mode batteur */}
             <label className="inline-flex items-center gap-1.5 cursor-pointer select-none" title="Mode batteur : masque les accords, affiche le BPM">
               <input
