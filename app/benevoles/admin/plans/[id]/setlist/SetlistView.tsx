@@ -218,36 +218,34 @@ export function SetlistView({ planId, planTitle, songs, announcements, sermons, 
             <p className="font-display text-base text-dark font-light truncate">{planTitle}</p>
             <p className="font-sans text-xs text-dark/40">{songs.length} chant{songs.length > 1 ? 's' : ''}</p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             {/* Anti-veille */}
             {wakeLockSupported && (
-              <label className="inline-flex items-center gap-1.5 cursor-pointer select-none" title={wakeLockEnabled ? 'Mise en veille bloquée — cliquer pour désactiver' : 'Cliquer pour bloquer la mise en veille'}>
-                <input
-                  type="checkbox"
-                  checked={wakeLockEnabled}
-                  onChange={e => setWakeLockEnabled(e.target.checked)}
-                  className="sr-only"
-                />
-                <span className={`w-7 h-4 rounded-full transition-colors flex items-center px-0.5 ${wakeLockEnabled ? 'bg-teal' : 'bg-dark/20'}`}>
-                  <span className={`w-3 h-3 rounded-full bg-white shadow transition-transform ${wakeLockEnabled ? 'translate-x-3' : 'translate-x-0'}`} />
-                </span>
-                <span className="font-sans text-xs text-dark/50">☀️</span>
-              </label>
+              <button
+                onClick={() => setWakeLockEnabled(v => !v)}
+                title={wakeLockEnabled ? 'Écran maintenu allumé — cliquer pour désactiver' : 'Cliquer pour maintenir l\'écran allumé'}
+                className={`inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border font-sans text-xs font-medium transition-colors ${
+                  wakeLockEnabled
+                    ? 'bg-amber-50 border-amber-300 text-amber-700'
+                    : 'border-dark/15 text-dark/35 hover:border-dark/30 hover:text-dark/60'
+                }`}
+              >
+                ☀️ <span className="hidden sm:inline">Écran</span>
+              </button>
             )}
 
             {/* Mode batteur */}
-            <label className="inline-flex items-center gap-1.5 cursor-pointer select-none" title="Mode batteur : masque les accords, affiche le BPM">
-              <input
-                type="checkbox"
-                checked={drummerMode}
-                onChange={e => setDrummerMode(e.target.checked)}
-                className="sr-only"
-              />
-              <span className={`w-7 h-4 rounded-full transition-colors flex items-center px-0.5 ${drummerMode ? 'bg-teal' : 'bg-dark/20'}`}>
-                <span className={`w-3 h-3 rounded-full bg-white shadow transition-transform ${drummerMode ? 'translate-x-3' : 'translate-x-0'}`} />
-              </span>
-              <span className="font-sans text-xs text-dark/50">🥁</span>
-            </label>
+            <button
+              onClick={() => setDrummerMode(v => !v)}
+              title="Mode batteur : masque les accords, affiche le BPM"
+              className={`inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border font-sans text-xs font-medium transition-colors ${
+                drummerMode
+                  ? 'bg-teal/10 border-teal/40 text-teal'
+                  : 'border-dark/15 text-dark/35 hover:border-dark/30 hover:text-dark/60'
+              }`}
+            >
+              🥁 <span className="hidden sm:inline">Batteur</span>
+            </button>
 
             <button
               onClick={openProjection}
@@ -340,13 +338,17 @@ export function SetlistView({ planId, planTitle, songs, announcements, sermons, 
               ← Liste
             </button>
             <p className="font-sans text-sm text-dark/50 truncate flex-1">{planTitle}</p>
-            <label className="inline-flex items-center gap-1.5 cursor-pointer select-none shrink-0" title="Mode batteur">
-              <input type="checkbox" checked={drummerMode} onChange={e => setDrummerMode(e.target.checked)} className="sr-only" />
-              <span className={`w-7 h-4 rounded-full transition-colors flex items-center px-0.5 ${drummerMode ? 'bg-teal' : 'bg-dark/20'}`}>
-                <span className={`w-3 h-3 rounded-full bg-white shadow transition-transform ${drummerMode ? 'translate-x-3' : 'translate-x-0'}`} />
-              </span>
-              <span className="font-sans text-xs text-dark/50">🥁</span>
-            </label>
+            <button
+              onClick={() => setDrummerMode(v => !v)}
+              title="Mode batteur"
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border font-sans text-xs font-medium transition-colors shrink-0 ${
+                drummerMode
+                  ? 'bg-teal/10 border-teal/40 text-teal'
+                  : 'border-dark/15 text-dark/35'
+              }`}
+            >
+              🥁 Batteur
+            </button>
           </div>
 
           {/* Scroll continu : tous les chants empilés */}
