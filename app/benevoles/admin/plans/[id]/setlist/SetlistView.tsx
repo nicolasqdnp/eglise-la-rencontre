@@ -224,13 +224,13 @@ export function SetlistView({ planId, planTitle, songs, announcements, sermons, 
               <button
                 onClick={() => setWakeLockEnabled(v => !v)}
                 title={wakeLockEnabled ? 'Écran maintenu allumé — cliquer pour désactiver' : 'Cliquer pour maintenir l\'écran allumé'}
-                className={`inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border font-sans text-xs font-medium transition-colors ${
+                className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border font-sans text-sm transition-colors ${
                   wakeLockEnabled
                     ? 'bg-amber-50 border-amber-300 text-amber-700'
-                    : 'border-dark/15 text-dark/35 hover:border-dark/30 hover:text-dark/60'
+                    : 'border-dark/15 text-dark/35 hover:border-dark/30'
                 }`}
               >
-                ☀️ <span className="hidden sm:inline">Écran</span>
+                ☀️
               </button>
             )}
 
@@ -238,13 +238,13 @@ export function SetlistView({ planId, planTitle, songs, announcements, sermons, 
             <button
               onClick={() => setDrummerMode(v => !v)}
               title="Mode batteur : masque les accords, affiche le BPM"
-              className={`inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border font-sans text-xs font-medium transition-colors ${
+              className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border font-sans text-sm transition-colors ${
                 drummerMode
                   ? 'bg-teal/10 border-teal/40 text-teal'
-                  : 'border-dark/15 text-dark/35 hover:border-dark/30 hover:text-dark/60'
+                  : 'border-dark/15 text-dark/35 hover:border-dark/30'
               }`}
             >
-              🥁 <span className="hidden sm:inline">Batteur</span>
+              🥁
             </button>
 
             <button
