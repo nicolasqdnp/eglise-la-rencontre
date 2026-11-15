@@ -96,6 +96,23 @@ export function SetlistView({ planId, planTitle, songs, announcements, sermons, 
     document.documentElement.style.overflow = 'hidden'
     return () => { document.documentElement.style.overflow = prev }
   }, [])
+
+  // Empêche la mise en veille de l'écran pendant la setlist (iOS 16.4+, Android Chrome).
+  useEffect(() => {
+    if (!('wakeLock' in navigator)) return
+    let lock: WakeLockSentinel | null = null
+    async function acquire() {
+      try { lock = await (navigator as Navigator & { wakeLock: { request: (t: string) => Promise<WakeLockSentinel> } }).wakeLock.request('screen') } catch {}
+    }
+    acquire()
+    // iOS libère le wake lock quand l'onglet passe en arrière-plan ; on le réacquiert au retour.
+    const onVisible = () => { if (document.visibilityState === 'visible') acquire() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      lock?.release().catch(() => {})
+    }
+  }, [])
   const [drummerMode, setDrummerMode] = useState(false)
   const [projecting, setProjecting]       = useState(autoProjection ?? false)
   const [styleModalSong, setStyleModalSong] = useState<Song | null>(null)
