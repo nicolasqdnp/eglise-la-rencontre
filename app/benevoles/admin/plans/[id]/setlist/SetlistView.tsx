@@ -435,6 +435,7 @@ export function SetlistView({ planId, planTitle, songs, announcements, sermons, 
               <DrummerChart chart={active.arrangement?.chord_chart ?? null} bpm={active.arrangement?.bpm ?? null} />
             ) : active.arrangement?.chord_chart ? (
               <ChordChart
+                key={active.arrangement.id}
                 chart={active.arrangement.chord_chart}
                 originalKey={active.arrangement.chord_chart_key}
                 initialKey={active.keySelected ?? active.arrangement.chord_chart_key ?? undefined}
