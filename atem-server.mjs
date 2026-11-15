@@ -1,7 +1,7 @@
 /**
  * Serveur local de contrôle ATEM
  * Usage: node atem-server.mjs [IP_ATEM]
- * Défaut Ethernet (atem-mini-pro-iso.home): node atem-server.mjs 10.0.0.107
+ * Sans argument : découverte automatique par MAC puis fallback mDNS
  */
 
 import { createServer } from 'http'
@@ -19,8 +19,35 @@ if (existsSync(new URL('./.env.atem', import.meta.url))) process.loadEnvFile(new
 
 const execAsync = promisify(exec)
 
-const ATEM_IP = process.argv[2] || '10.0.0.107'
+// MAC de l'ATEM Mini Pro ISO — ne change jamais
+const ATEM_MAC = '7c:2e:d:23:88:2b'
+const ATEM_ARG = process.argv[2]  // IP/hostname explicite passé en argument
+let ATEM_IP = ATEM_ARG || 'atem-mini-pro-iso.local'
 const PORT = 3001
+
+// Cherche l'IP de l'ATEM dans la table ARP à partir de son adresse MAC
+async function findAtemByMac() {
+  try {
+    const { stdout } = await execAsync(`arp -a | grep -i "${ATEM_MAC}"`)
+    const match = stdout.match(/\((\d+\.\d+\.\d+\.\d+)\)/)
+    return match?.[1] ?? null
+  } catch { return null }
+}
+
+// Résout l'IP à utiliser : argument > ARP par MAC > hostname mDNS
+async function resolveAtemIp() {
+  if (ATEM_ARG) return ATEM_ARG
+  const macIp = await findAtemByMac()
+  if (macIp) { console.log(`🔍 ATEM découvert via MAC : ${macIp}`); return macIp }
+  console.log('🔍 IP non trouvée dans ARP — tentative via hostname mDNS…')
+  return 'atem-mini-pro-iso.local'
+}
+
+async function connectAtem() {
+  ATEM_IP = await resolveAtemIp()
+  console.log(`Connexion à l'ATEM (${ATEM_IP})...`)
+  atem.connect(ATEM_IP)
+}
 
 // Index du device de capture (0 = UGREEN par défaut)
 const CAPTURE_DEVICE = process.argv[3] || '0'
@@ -51,12 +78,19 @@ let faceStatus = { 1: true, 2: true, 3: true, 4: true } // true = visage détect
 
 // ── ATEM ──────────────────────────────────────────────────────────────────────
 
-atem.on('error', (err) => console.error('[ATEM ERROR]', err.message))
-atem.on('connected', () => { connected = true; console.log(`✅ ATEM connecté (${ATEM_IP})`) })
-atem.on('disconnected', () => { connected = false; console.log('⚠️  ATEM déconnecté') })
+let reconnectTimer = null
 
-console.log(`Connexion à l'ATEM (${ATEM_IP})...`)
-atem.connect(ATEM_IP)
+atem.on('error', (err) => console.error('[ATEM ERROR]', err.message))
+atem.on('connected', () => {
+  connected = true
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null }
+  console.log(`✅ ATEM connecté (${ATEM_IP})`)
+})
+atem.on('disconnected', () => {
+  connected = false
+  console.log('⚠️  ATEM déconnecté — reconnexion dans 10s…')
+  reconnectTimer = setTimeout(connectAtem, 10000)
+})
 
 // ── Paroles (canal Supabase obs-live → DSK) ──────────────────────────────────
 
@@ -105,7 +139,15 @@ async function runFaceDetection() {
       const h = Math.floor(region.h * H)
 
       const quadrant = createCanvas(w, h)
-      quadrant.getContext('2d').drawImage(canvas, x, y, w, h, 0, 0, w, h)
+      const qctx = quadrant.getContext('2d')
+      qctx.drawImage(canvas, x, y, w, h, 0, 0, w, h)
+
+      // Caméra éteinte / "No signal" → quadrant trop sombre → exclure
+      const pixels = qctx.getImageData(0, 0, w, h).data
+      let brightness = 0
+      for (let i = 0; i < pixels.length; i += 4) brightness += (pixels[i] + pixels[i+1] + pixels[i+2]) / 3
+      brightness /= (pixels.length / 4)
+      if (brightness < 12) { newStatus[parseInt(camId)] = false; continue }
 
       const detections = await faceapi.detectAllFaces(quadrant, opts)
       newStatus[parseInt(camId)] = detections.length > 0
@@ -353,5 +395,5 @@ const server = createServer(async (req, res) => {
 server.listen(PORT, async () => {
   console.log(`\n🎬 Serveur ATEM démarré sur http://localhost:${PORT}`)
   console.log(`   Régie : http://localhost:3000/benevoles/admin/regie\n`)
-  await initFaceDetection()
+  await Promise.all([connectAtem(), initFaceDetection()])
 })
