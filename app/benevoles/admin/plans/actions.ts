@@ -843,6 +843,20 @@ export async function movePlanSong(formData: FormData) {
   revalidatePath(`/benevoles/admin/plans/${planId}`)
 }
 
+/** Change la tonalité sélectionnée pour un chant dans un plan (sans toucher à l'arrangement). */
+export async function updatePlanSongKey(
+  planSongId: string,
+  key: string | null,
+): Promise<{ ok: boolean; error?: string }> {
+  const { admin } = await requireAdmin()
+  const { error } = await admin
+    .from('plan_songs')
+    .update({ key_selected: key })
+    .eq('id', planSongId)
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}
+
 /** Change l'arrangement sélectionné pour un chant dans un plan. */
 export async function updatePlanSongArrangement(
   planSongId: string,

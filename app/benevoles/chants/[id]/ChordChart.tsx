@@ -11,12 +11,14 @@ type Props = {
   initialKey?: string
   songId: number | string
   arrangementId?: string
+  /** Appelé quand l'utilisateur change la tonalité */
+  onKeyChange?: (key: string) => void
 }
 
 // Tonalités courantes affichées dans le sélecteur
 const COMMON_KEYS = ['C', 'D', 'E', 'F', 'G', 'A', 'Bb', 'Eb', 'Ab', 'Db', 'F#', 'B']
 
-export function ChordChart({ chart, originalKey, initialKey, songId, arrangementId }: Props) {
+export function ChordChart({ chart, originalKey, initialKey, songId, arrangementId, onKeyChange }: Props) {
   const defaultKey = originalKey ?? 'C'
   const [selectedKey, setSelectedKey] = useState(initialKey ?? defaultKey)
   const [showChords, setShowChords] = useState(true)
@@ -73,7 +75,7 @@ export function ChordChart({ chart, originalKey, initialKey, songId, arrangement
             {/* Réinitialiser tonalité */}
             {semitones !== 0 && (
               <button
-                onClick={() => setSelectedKey(defaultKey)}
+                onClick={() => { setSelectedKey(defaultKey); onKeyChange?.(defaultKey) }}
                 className="font-sans text-xs text-dark/30 hover:text-dark transition-colors"
               >
                 ↺
@@ -87,7 +89,7 @@ export function ChordChart({ chart, originalKey, initialKey, songId, arrangement
           {COMMON_KEYS.map(key => (
             <button
               key={key}
-              onClick={() => setSelectedKey(key)}
+              onClick={() => { setSelectedKey(key); onKeyChange?.(key) }}
               className={`
                 w-9 h-9 rounded-xl font-sans text-sm font-medium transition-colors
                 ${selectedKey === key

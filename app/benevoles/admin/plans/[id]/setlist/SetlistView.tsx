@@ -7,7 +7,7 @@ import { IconProjector, IconMusicalNote } from '@/app/benevoles/_components/Icon
 import { ChordChart } from '@/app/benevoles/chants/[id]/ChordChart'
 import { MediaPlayer } from '@/app/benevoles/chants/[id]/MediaPlayer'
 import { ProjectionView } from './ProjectionView'
-import { updatePlanSongArrangement } from '@/app/benevoles/admin/plans/actions'
+import { updatePlanSongArrangement, updatePlanSongKey } from '@/app/benevoles/admin/plans/actions'
 import { SlideStyleModal } from './SlideStyleModal'
 import { type SlideStyle, getPresetById } from '@/lib/slidePresets'
 import { isSectionHeader, isChordLine } from '@/lib/transpose'
@@ -87,6 +87,16 @@ export function SetlistView({ planId, planTitle, songs, announcements, sermons, 
   const router = useRouter()
   const [activeIdx, setActiveIdx] = useState(0)
   const [mobileView, setMobileView] = useState<'list' | 'chart'>('list')
+
+  // Tonalités choisies par l'utilisateur dans cette setlist (planSongId → clé).
+  // Initialisé depuis keySelected en base ; mis à jour localement sans rechargement.
+  const [keyOverrides, setKeyOverrides] = useState<Record<string, string>>(() =>
+    Object.fromEntries(songs.flatMap(s => s.keySelected ? [[s.planSongId, s.keySelected]] : []))
+  )
+  function handleKeyChange(planSongId: string, key: string) {
+    setKeyOverrides(prev => ({ ...prev, [planSongId]: key }))
+    updatePlanSongKey(planSongId, key)
+  }
 
   // Le layout parent a pb-28 sur mobile → le document dépasse de 112px → page scrollable →
   // l'entête de l'aside (bouton batteur) monte hors viewport. On verrouille le scroll ici.
@@ -340,11 +350,13 @@ export function SetlistView({ planId, planTitle, songs, announcements, sermons, 
                     <DrummerChart chart={s.arrangement?.chord_chart ?? null} bpm={s.arrangement?.bpm ?? null} />
                   ) : s.arrangement?.chord_chart ? (
                     <ChordChart
+                      key={s.planSongId}
                       chart={s.arrangement.chord_chart}
                       originalKey={s.arrangement.chord_chart_key}
-                      initialKey={s.keySelected ?? s.arrangement.chord_chart_key ?? undefined}
+                      initialKey={keyOverrides[s.planSongId] ?? s.arrangement.chord_chart_key ?? undefined}
                       songId={s.song.id}
                       arrangementId={s.arrangement.id}
+                      onKeyChange={(key) => handleKeyChange(s.planSongId, key)}
                     />
                   ) : (
                     <div className="bg-white rounded-xl border border-teal/20 px-4 py-6 text-center">
@@ -435,12 +447,13 @@ export function SetlistView({ planId, planTitle, songs, announcements, sermons, 
               <DrummerChart chart={active.arrangement?.chord_chart ?? null} bpm={active.arrangement?.bpm ?? null} />
             ) : active.arrangement?.chord_chart ? (
               <ChordChart
-                key={active.arrangement.id}
+                key={active.planSongId}
                 chart={active.arrangement.chord_chart}
                 originalKey={active.arrangement.chord_chart_key}
-                initialKey={active.keySelected ?? active.arrangement.chord_chart_key ?? undefined}
+                initialKey={keyOverrides[active.planSongId] ?? active.arrangement.chord_chart_key ?? undefined}
                 songId={active.song.id}
                 arrangementId={active.arrangement.id}
+                onKeyChange={(key) => handleKeyChange(active.planSongId, key)}
               />
             ) : (
               <div className="bg-white rounded-2xl border border-teal/20 px-5 py-10 text-center space-y-5">
