@@ -3,6 +3,9 @@
 Quand on prépare une liste de chants (un plan), on choisit une tonalité à l'ajout du chant.
 Vous pouvez maintenant **la modifier à tout moment**, sans supprimer ni ré-ajouter le chant.
 
+> Version visuelle avec captures et vidéo : [`changer-la-tonalite.html`](changer-la-tonalite.html)
+> (un seul fichier, à ouvrir dans un navigateur). Vidéo seule : [`video/changer-la-tonalite.webm`](video/changer-la-tonalite.webm).
+
 ## Où le faire ?
 
 ### 1. Depuis la liste des chants du plan (le plus rapide)
@@ -14,12 +17,16 @@ Vous pouvez maintenant **la modifier à tout moment**, sans supprimer ni ré-ajo
 C'est enregistré tout de suite : pas de bouton « Valider ». Si l'enregistrement échoue,
 la tonalité revient à l'ancienne et un message d'erreur rouge s'affiche sous le menu.
 
+![Menu de tonalité sur téléphone](images/mobile-2-apres.png)
+
 ### 2. Depuis la grille d'accords (sur ordinateur)
 
 1. Dans le bloc **Chants**, cliquez sur le titre du chant pour ouvrir sa grille.
 2. Cliquez sur une des tonalités (`C`, `D`, `E`, `F`, `G`…) au-dessus de la grille.
    Les accords sont transposés et la tonalité est enregistrée pour ce plan.
 3. Le bouton **↺** remet la tonalité d'origine du chant.
+
+![Grille d'accords en tonalité A](images/bureau-3-grille.png)
 
 Si vous changez la tonalité par le menu de la liste pendant que la grille est ouverte,
 la grille se met à jour automatiquement.
