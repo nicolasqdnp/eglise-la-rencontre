@@ -185,7 +185,7 @@ export default async function PlanDetailPage({
                   </Link>
                 )}
               </div>
-              <MobileSongsList planId={id} planSongs={planSongs as any} />
+              <MobileSongsList planId={id} planSongs={planSongs as any} canManage={canManage} />
               <div className="border-t border-teal/10 px-4 py-3 bg-teal-50/20">
                 <AddSongForm planId={id} songs={allSongs as any} />
               </div>

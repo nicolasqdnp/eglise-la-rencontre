@@ -15,9 +15,11 @@ type PlanSong = {
 type Props = {
   planId: string
   planSongs: PlanSong[]
+  /** Admin ou éditeur : seuls eux peuvent changer la tonalité (l'action serveur refuse les autres). */
+  canManage?: boolean
 }
 
-export function MobileSongsList({ planId, planSongs }: Props) {
+export function MobileSongsList({ planId, planSongs, canManage = false }: Props) {
   const [optimisticSongs, setOptimisticSongs] = useState(planSongs)
   const optimisticRef = useRef(planSongs)
   const [isPending, startTransition] = useTransition()
@@ -167,16 +169,21 @@ export function MobileSongsList({ planId, planSongs }: Props) {
 
               <div className="flex-1 min-w-0">
                 <p className="font-sans text-sm text-dark font-medium truncate">{ps.songs?.title ?? '—'}</p>
+                {!canManage && ps.key_selected && (
+                  <p className="font-sans text-xs text-dark/35 mt-0.5">Tonalité : {ps.key_selected}</p>
+                )}
               </div>
 
-              <PlanSongKeySelect
-                planId={planId}
-                planSongId={ps.id}
-                value={ps.key_selected}
-                originalKey={ps.arrangements?.chord_chart_key ?? null}
-                keysAvailable={ps.arrangements?.keys_available}
-                onChange={key => handleKeyChange(ps.id, key)}
-              />
+              {canManage && (
+                <PlanSongKeySelect
+                  planId={planId}
+                  planSongId={ps.id}
+                  value={ps.key_selected}
+                  originalKey={ps.arrangements?.chord_chart_key ?? null}
+                  keysAvailable={ps.arrangements?.keys_available}
+                  onChange={key => handleKeyChange(ps.id, key)}
+                />
+              )}
 
               {ps.songs?.id && (
                 <Link
