@@ -23,6 +23,13 @@ export function ChordChart({ chart, originalKey, initialKey, songId, arrangement
   const [selectedKey, setSelectedKey] = useState(initialKey ?? defaultKey)
   const [showChords, setShowChords] = useState(true)
 
+  // Suit la tonalité imposée de l'extérieur (ex : changée depuis la liste des chants du plan).
+  const [prevInitialKey, setPrevInitialKey] = useState(initialKey)
+  if (initialKey !== prevInitialKey) {
+    setPrevInitialKey(initialKey)
+    if (initialKey) setSelectedKey(initialKey)
+  }
+
   const transposed = useMemo(
     () => transposeChart(chart, defaultKey, selectedKey),
     [chart, defaultKey, selectedKey]

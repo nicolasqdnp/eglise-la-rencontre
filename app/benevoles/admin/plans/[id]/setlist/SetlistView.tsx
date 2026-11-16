@@ -95,7 +95,7 @@ export function SetlistView({ planId, planTitle, songs, announcements, sermons, 
   )
   function handleKeyChange(planSongId: string, key: string) {
     setKeyOverrides(prev => ({ ...prev, [planSongId]: key }))
-    updatePlanSongKey(planSongId, key)
+    updatePlanSongKey(planSongId, key, planId)
   }
 
   // Le layout parent a pb-28 sur mobile → le document dépasse de 112px → page scrollable →

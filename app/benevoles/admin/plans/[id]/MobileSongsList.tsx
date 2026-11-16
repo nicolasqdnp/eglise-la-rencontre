@@ -3,11 +3,13 @@
 import { useState, useRef, useEffect, useTransition } from 'react'
 import Link from 'next/link'
 import { reorderPlanSongs, removePlanSong } from '../actions'
+import { PlanSongKeySelect } from './PlanSongKeySelect'
 
 type PlanSong = {
   id: string
   key_selected: string | null
   songs: { id: number; title: string } | null
+  arrangements?: { chord_chart_key: string | null; keys_available?: string[] | null } | null
 }
 
 type Props = {
@@ -112,6 +114,12 @@ export function MobileSongsList({ planId, planSongs }: Props) {
     startTransition(() => removePlanSong(fd))
   }
 
+  function handleKeyChange(planSongId: string, key: string) {
+    const next = optimisticRef.current.map(ps => ps.id === planSongId ? { ...ps, key_selected: key } : ps)
+    setOptimisticSongs(next)
+    optimisticRef.current = next
+  }
+
   function startDrag(id: string, index: number) {
     isDraggingRef.current  = true
     dragIdRef.current      = id
@@ -159,10 +167,16 @@ export function MobileSongsList({ planId, planSongs }: Props) {
 
               <div className="flex-1 min-w-0">
                 <p className="font-sans text-sm text-dark font-medium truncate">{ps.songs?.title ?? '—'}</p>
-                {ps.key_selected && (
-                  <p className="font-sans text-xs text-dark/35 mt-0.5">Tonalité : {ps.key_selected}</p>
-                )}
               </div>
+
+              <PlanSongKeySelect
+                planId={planId}
+                planSongId={ps.id}
+                value={ps.key_selected}
+                originalKey={ps.arrangements?.chord_chart_key ?? null}
+                keysAvailable={ps.arrangements?.keys_available}
+                onChange={key => handleKeyChange(ps.id, key)}
+              />
 
               {ps.songs?.id && (
                 <Link
