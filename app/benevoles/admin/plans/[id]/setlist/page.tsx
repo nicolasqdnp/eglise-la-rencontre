@@ -101,6 +101,7 @@ export default async function SetlistPage({
       sermons={(sermons ?? []) as { id: string; title: string; url: string }[]}
       videos={(videos ?? []) as { id: string; title: string | null; url: string; order_index: number }[]}
       autoProjection={projection === '1'}
+      canEditKey={['admin', 'editor', 'super_admin'].includes(me?.permission ?? '')}
     />
   )
 }

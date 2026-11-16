@@ -185,7 +185,7 @@ export default async function PlanDetailPage({
                   </Link>
                 )}
               </div>
-              <MobileSongsList planId={id} planSongs={planSongs as any} />
+              <MobileSongsList planId={id} planSongs={planSongs as any} canManage={canManage} />
               <div className="border-t border-teal/10 px-4 py-3 bg-teal-50/20">
                 <AddSongForm planId={id} songs={allSongs as any} />
               </div>
@@ -420,6 +420,33 @@ export default async function PlanDetailPage({
               <div className="bg-white rounded-2xl border border-teal/20 px-5 py-4">
                 <p className="font-sans text-xs text-dark/40 uppercase tracking-widest font-medium mb-1">Mon rôle</p>
                 <p className="font-sans text-sm font-medium text-dark">{myAssignment.positions?.name ?? 'Bénévole'}</p>
+              </div>
+            )}
+            {/* Chants du culte — lecture seule (la tonalité se modifie côté admin/éditeur) */}
+            {(planSongs as any[]).length > 0 && (
+              <div className="bg-white rounded-2xl border border-teal/20 overflow-hidden" data-testid="viewer-songs">
+                <div className="px-5 py-3 border-b border-teal/10 flex items-center justify-between bg-teal-50/50">
+                  <p className="font-sans text-xs text-dark/40 uppercase tracking-widest font-medium">
+                    <IconMusicalNote className="w-3 h-3 inline-block mr-1 text-dark/30" />
+                    Chants
+                  </p>
+                  <Link href={`/benevoles/admin/plans/${id}/setlist`} className="font-sans text-xs text-teal hover:underline">
+                    Setlist →
+                  </Link>
+                </div>
+                <ol className="divide-y divide-teal/10">
+                  {(planSongs as any[]).map((ps, i) => (
+                    <li key={ps.id} className="px-5 py-3 flex items-center gap-3">
+                      <span className="font-sans text-xs text-dark/25 tabular-nums w-4 text-right shrink-0">{i + 1}</span>
+                      <p className="flex-1 min-w-0 font-sans text-sm font-medium text-dark truncate">{ps.songs?.title ?? '—'}</p>
+                      {(ps.key_selected ?? ps.arrangements?.chord_chart_key) && (
+                        <span className="font-sans text-xs text-teal font-medium shrink-0">
+                          Tonalité : {ps.key_selected ?? ps.arrangements?.chord_chart_key}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ol>
               </div>
             )}
           </main>

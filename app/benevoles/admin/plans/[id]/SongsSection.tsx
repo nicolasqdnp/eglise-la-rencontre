@@ -3,13 +3,15 @@
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { ChordChart } from '@/app/benevoles/chants/[id]/ChordChart'
 import { AddSongForm } from './AddSongForm'
-import { removePlanSong, movePlanSong, reorderPlanSongs } from '../actions'
+import { PlanSongKeySelect } from './PlanSongKeySelect'
+import { removePlanSong, movePlanSong, reorderPlanSongs, updatePlanSongKey } from '../actions'
 
 type Arrangement = {
   id: string
   name: string
   chord_chart: string | null
   chord_chart_key: string | null
+  keys_available?: string[] | null
 }
 
 type PlanSong = {
@@ -195,6 +197,12 @@ export function SongsSection({ planId, planSongs, allSongs }: Props) {
     if (activeId === planSongId) setActiveId(null)
   }
 
+  function handleKeyChange(planSongId: string, key: string) {
+    const next = optimisticSongsRef.current.map(ps => ps.id === planSongId ? { ...ps, key_selected: key } : ps)
+    setOptimisticSongs(next)
+    optimisticSongsRef.current = next
+  }
+
   function handleMove(planSongId: string, direction: 'up' | 'down') {
     const fd = new FormData()
     fd.set('plan_song_id', planSongId)
@@ -288,16 +296,20 @@ export function SongsSection({ planId, planSongs, allSongs }: Props) {
                     <p className={`font-sans text-sm truncate ${isActive ? 'text-dark font-semibold' : 'text-dark/80 font-medium'}`}>
                       {song?.title ?? '—'}
                     </p>
-                    {!isOpen && (
-                      <p className="font-sans text-xs text-dark/35 truncate">
-                        {arr?.name && <span className="mr-1.5">{arr.name}</span>}
-                        {ps.key_selected && <span className="text-teal font-medium">{ps.key_selected}</span>}
-                      </p>
-                    )}
-                    {isOpen && ps.key_selected && (
-                      <p className="font-sans text-xs text-teal font-medium">{ps.key_selected}</p>
+                    {!isOpen && arr?.name && (
+                      <p className="font-sans text-xs text-dark/35 truncate">{arr.name}</p>
                     )}
                   </button>
+
+                  {/* Tonalité modifiable après coup */}
+                  <PlanSongKeySelect
+                    planId={planId}
+                    planSongId={ps.id}
+                    value={ps.key_selected}
+                    originalKey={arr?.chord_chart_key ?? null}
+                    keysAvailable={arr?.keys_available}
+                    onChange={key => handleKeyChange(ps.id, key)}
+                  />
 
                   {/* Flèches ▲▼ — desktop seulement */}
                   {!isOpen && (
@@ -362,11 +374,16 @@ export function SongsSection({ planId, planSongs, allSongs }: Props) {
           </button>
           {active.arrangements?.chord_chart ? (
             <ChordChart
+              key={active.id}
               chart={active.arrangements.chord_chart}
               originalKey={active.arrangements.chord_chart_key}
               initialKey={active.key_selected ?? active.arrangements.chord_chart_key ?? undefined}
               songId={active.songs?.id ?? 0}
               arrangementId={active.arrangements.id}
+              onKeyChange={key => {
+                handleKeyChange(active.id, key)
+                updatePlanSongKey(active.id, key, planId)
+              }}
             />
           ) : (
             <div className="h-full flex flex-col items-center justify-center gap-3 text-center">

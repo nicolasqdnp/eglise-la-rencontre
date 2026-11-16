@@ -847,6 +847,7 @@ export async function movePlanSong(formData: FormData) {
 export async function updatePlanSongKey(
   planSongId: string,
   key: string | null,
+  planId?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const { admin } = await requireAdmin()
   const { error } = await admin
@@ -854,6 +855,11 @@ export async function updatePlanSongKey(
     .update({ key_selected: key })
     .eq('id', planSongId)
   if (error) return { ok: false, error: error.message }
+  if (planId) {
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath(`/benevoles/admin/plans/${planId}`)
+    revalidatePath(`/benevoles/admin/plans/${planId}/setlist`)
+  }
   return { ok: true }
 }
 

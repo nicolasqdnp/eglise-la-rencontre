@@ -188,7 +188,7 @@ export async function getPlanDetail(
     getStableCatalog(),
     supabase
       .from('plan_songs')
-      .select('id, order_index, key_selected, songs(id, title), arrangements(id, name, chord_chart, chord_chart_key)')
+      .select('id, order_index, key_selected, songs(id, title), arrangements(id, name, chord_chart, chord_chart_key, keys_available)')
       .eq('plan_id', planId)
       .order('order_index'),
     supabase
