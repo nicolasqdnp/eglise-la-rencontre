@@ -79,14 +79,15 @@ test.describe('Tonalité d\'un chant du plan', () => {
     await expect(page.locator('select[aria-label="Tonalité"]:visible').first()).toHaveValue('D')
   })
 
-  test('un bénévole simple ne voit aucun menu (lecture seule), base inchangée', async ({ as, refs }, testInfo) => {
+  test('un bénévole simple voit la liste des chants sans menu (lecture seule), sur tous les appareils, base inchangée', async ({ as, refs }, testInfo) => {
     void refs
     const planId = await seedSongs()
     const page = await as('paul')
     await gotoPlan(page, planId, TITLE)
-    // Mobile : la liste des chants s'affiche avec la tonalité en texte. Grand écran : un bénévole simple
-    // n'a pas de liste de chants du tout (page « Mon rôle » seulement).
-    if (!isDesktop(testInfo)) await expect(page.getByText('Tonalité : G')).toBeVisible()
+    // Mobile et grand écran : la liste des chants s'affiche en lecture seule, tonalité en texte.
+    await expect(page.getByText('Chant de test').filter({ visible: true }).first()).toBeVisible()
+    await expect(page.getByText('Tonalité : G').filter({ visible: true }).first()).toBeVisible()
+    if (isDesktop(testInfo)) await expect(page.getByTestId('viewer-songs').getByRole('link', { name: /Setlist/ })).toBeVisible()
     await expect(page.locator('select[aria-label="Tonalité"]')).toHaveCount(0)
     expect(await storedKey()).toBe('G')
   })

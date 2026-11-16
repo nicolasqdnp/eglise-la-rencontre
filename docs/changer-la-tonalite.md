@@ -43,7 +43,7 @@ peut transposer la grille pour lui-même, mais cela n'est pas enregistré et ne 
   dans la bibliothèque, ni les autres plans.
 - **Tonalités proposées** : la tonalité actuelle, celle d'origine, celles renseignées
   pour l'arrangement, puis les tonalités courantes (C, D, E, F, G, A, B, Bb, Eb, Ab, Db, F#).
-- **Qui peut modifier ?** Les administrateurs et les éditeurs. Un bénévole simple voit la tonalité en lecture seule (pas de menu).
+- **Qui peut modifier ?** Les administrateurs et les éditeurs. Un bénévole simple voit la liste des chants et leur tonalité en lecture seule (pas de menu), sur téléphone comme sur ordinateur.
 - La page de partage et l'impression PDF utilisent la tonalité enregistrée.
 
 ## Pour les développeurs
