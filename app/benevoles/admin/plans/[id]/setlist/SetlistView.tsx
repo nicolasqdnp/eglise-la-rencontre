@@ -81,9 +81,12 @@ type Props = {
   sermons: Sermon[]
   videos?: PlanVideo[]
   autoProjection?: boolean
+  /** Admin ou éditeur : seuls eux enregistrent la tonalité dans le plan. Les autres transposent pour eux-mêmes
+   *  (sans appel serveur : l'action est refusée et les renverrait vers leur tableau de bord). */
+  canEditKey?: boolean
 }
 
-export function SetlistView({ planId, planTitle, songs, announcements, sermons, videos, autoProjection }: Props) {
+export function SetlistView({ planId, planTitle, songs, announcements, sermons, videos, autoProjection, canEditKey = false }: Props) {
   const router = useRouter()
   const [activeIdx, setActiveIdx] = useState(0)
   const [mobileView, setMobileView] = useState<'list' | 'chart'>('list')
@@ -95,7 +98,7 @@ export function SetlistView({ planId, planTitle, songs, announcements, sermons, 
   )
   function handleKeyChange(planSongId: string, key: string) {
     setKeyOverrides(prev => ({ ...prev, [planSongId]: key }))
-    updatePlanSongKey(planSongId, key, planId)
+    if (canEditKey) updatePlanSongKey(planSongId, key, planId)
   }
 
   // Le layout parent a pb-28 sur mobile → le document dépasse de 112px → page scrollable →

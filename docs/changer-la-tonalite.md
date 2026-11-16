@@ -34,7 +34,8 @@ la grille se met à jour automatiquement.
 ### 3. Pendant la répétition / le culte (vue Setlist)
 
 Dans **Setlist**, les boutons de tonalité de la grille fonctionnent de la même façon et
-sont aussi enregistrés pour le plan.
+sont aussi enregistrés pour le plan, **pour les administrateurs et les éditeurs**. Un bénévole simple
+peut transposer la grille pour lui-même, mais cela n'est pas enregistré et ne change rien pour les autres.
 
 ## Ce qui est bon à savoir
 

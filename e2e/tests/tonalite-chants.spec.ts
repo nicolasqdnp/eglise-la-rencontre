@@ -90,4 +90,32 @@ test.describe('Tonalité d\'un chant du plan', () => {
     await expect(page.locator('select[aria-label="Tonalité"]')).toHaveCount(0)
     expect(await storedKey()).toBe('G')
   })
+
+  // Vue Setlist (« Live ») : ouverte à tous les bénévoles connectés, sur tous les appareils.
+  async function changeKeyInSetlist(page: import('@playwright/test').Page, planId: string) {
+    await page.goto(`/benevoles/admin/plans/${planId}/setlist`)
+    const d = page.getByRole('button', { name: 'D', exact: true }).filter({ visible: true })
+    if (!(await d.count())) await page.getByText('Chant de test').filter({ visible: true }).first().click() // mobile : ouvre la grille
+    await expect(d.first()).toBeVisible()
+    await d.first().click()
+  }
+
+  test('Setlist : l\'éditeur enregistre la tonalité dans le plan', async ({ as, refs }) => {
+    void refs
+    const planId = await seedSongs()
+    const page = await as('editor')
+    await changeKeyInSetlist(page, planId)
+    await expect.poll(storedKey, { timeout: 15_000 }).toBe('D')
+  })
+
+  test('Setlist : un bénévole simple transpose pour lui, sans être renvoyé au tableau de bord ni modifier le plan', async ({ as, refs }) => {
+    void refs
+    const planId = await seedSongs()
+    const page = await as('paul')
+    await changeKeyInSetlist(page, planId)
+    await page.waitForTimeout(2500)
+    expect(page.url()).toContain('/setlist')
+    expect(await storedKey()).toBe('G')
+    await expect(page.getByRole('button', { name: 'D', exact: true }).filter({ visible: true }).first()).toBeVisible()
+  })
 })
