@@ -995,6 +995,66 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
                   })() : []} size="sm" dim />
                 )}
               </div>
+
+              {/* Prev / Next — sous l'aperçu Suivante */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    if (projectedSermonLabel) {
+                      for (const sermon of sermons) {
+                        const pages = sermonPagesMap[sermon.id] ?? []
+                        for (let i = 0; i < pages.length; i++) {
+                          if (`${sermon.title} — p.${i + 1}` === projectedSermonLabel && i > 0) {
+                            projectSermonPage(pages[i - 1], `${sermon.title} — p.${i}`)
+                            return
+                          }
+                        }
+                      }
+                    } else if (projectedAnnouncementId) {
+                      const idx = visibleAnnouncements.findIndex(a => a.id === projectedAnnouncementId)
+                      if (idx > 0) projectAnnouncement(visibleAnnouncements[idx - 1])
+                    } else {
+                      if (current.slideIdx > 0) goto(current.songIdx, current.slideIdx - 1)
+                      else if (current.songIdx > 0) {
+                        const prev = songSlides[current.songIdx - 1]
+                        goto(current.songIdx - 1, Math.max(0, prev.slides.length - 1))
+                      }
+                    }
+                  }}
+                  disabled={isFirst}
+                  className="flex-1 py-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-25 rounded-xl font-sans text-sm transition-colors"
+                >
+                  ← Précédente
+                </button>
+                <button
+                  onClick={() => {
+                    if (projectedSermonLabel) {
+                      for (const sermon of sermons) {
+                        const pages = sermonPagesMap[sermon.id] ?? []
+                        for (let i = 0; i < pages.length; i++) {
+                          if (`${sermon.title} — p.${i + 1}` === projectedSermonLabel && i + 1 < pages.length) {
+                            projectSermonPage(pages[i + 1], `${sermon.title} — p.${i + 2}`)
+                            return
+                          }
+                        }
+                      }
+                    } else if (projectedAnnouncementId) {
+                      const idx = visibleAnnouncements.findIndex(a => a.id === projectedAnnouncementId)
+                      if (idx >= 0 && idx < visibleAnnouncements.length - 1) {
+                        projectAnnouncement(visibleAnnouncements[idx + 1])
+                      }
+                    } else {
+                      const nextInSong = currentSong?.slides[current.slideIdx + 1]
+                      if (nextInSong) goto(current.songIdx, current.slideIdx + 1)
+                      else if (current.songIdx < allSongs.length - 1) goto(current.songIdx + 1, 0)
+                    }
+                  }}
+                  disabled={isLast}
+                  className="flex-1 py-2.5 bg-teal hover:bg-teal/80 disabled:opacity-25 rounded-xl font-sans text-sm font-semibold transition-colors"
+                >
+                  Suivante →
+                </button>
+              </div>
             </>
           )}
 
@@ -1159,66 +1219,6 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
                     : `▶ ${autoAdvanceSecs}s / diapo${autoLoop ? ' · boucle ∞' : ''}`}
               </p>
             )}
-          </div>
-
-          {/* Prev / Next */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => {
-                if (projectedSermonLabel) {
-                  for (const sermon of sermons) {
-                    const pages = sermonPagesMap[sermon.id] ?? []
-                    for (let i = 0; i < pages.length; i++) {
-                      if (`${sermon.title} — p.${i + 1}` === projectedSermonLabel && i > 0) {
-                        projectSermonPage(pages[i - 1], `${sermon.title} — p.${i}`)
-                        return
-                      }
-                    }
-                  }
-                } else if (projectedAnnouncementId) {
-                  const idx = visibleAnnouncements.findIndex(a => a.id === projectedAnnouncementId)
-                  if (idx > 0) projectAnnouncement(visibleAnnouncements[idx - 1])
-                } else {
-                  if (current.slideIdx > 0) goto(current.songIdx, current.slideIdx - 1)
-                  else if (current.songIdx > 0) {
-                    const prev = songSlides[current.songIdx - 1]
-                    goto(current.songIdx - 1, Math.max(0, prev.slides.length - 1))
-                  }
-                }
-              }}
-              disabled={isFirst}
-              className="flex-1 py-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-25 rounded-xl font-sans text-sm transition-colors"
-            >
-              ← Précédente
-            </button>
-            <button
-              onClick={() => {
-                if (projectedSermonLabel) {
-                  for (const sermon of sermons) {
-                    const pages = sermonPagesMap[sermon.id] ?? []
-                    for (let i = 0; i < pages.length; i++) {
-                      if (`${sermon.title} — p.${i + 1}` === projectedSermonLabel && i + 1 < pages.length) {
-                        projectSermonPage(pages[i + 1], `${sermon.title} — p.${i + 2}`)
-                        return
-                      }
-                    }
-                  }
-                } else if (projectedAnnouncementId) {
-                  const idx = visibleAnnouncements.findIndex(a => a.id === projectedAnnouncementId)
-                  if (idx >= 0 && idx < visibleAnnouncements.length - 1) {
-                    projectAnnouncement(visibleAnnouncements[idx + 1])
-                  }
-                } else {
-                  const nextInSong = currentSong?.slides[current.slideIdx + 1]
-                  if (nextInSong) goto(current.songIdx, current.slideIdx + 1)
-                  else if (current.songIdx < allSongs.length - 1) goto(current.songIdx + 1, 0)
-                }
-              }}
-              disabled={isLast}
-              className="flex-1 py-2.5 bg-teal hover:bg-teal/80 disabled:opacity-25 rounded-xl font-sans text-sm font-semibold transition-colors"
-            >
-              Suivante →
-            </button>
           </div>
 
           {/* Liste des chants */}
