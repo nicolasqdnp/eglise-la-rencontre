@@ -8,7 +8,6 @@ import { updateSlideLyrics, searchSongsForProjection, removePlanSong, type SongS
 import { deleteAnnouncement } from '@/app/benevoles/admin/plans/[id]/annonces-actions'
 import { fetchBibleVerse, BIBLE_VERSIONS } from '@/lib/bible'
 import { createClient } from '@/lib/supabase/client'
-import { SermonPdfPanel } from './SermonPdfPanel'
 import { getEmbedUrl, getYoutubeThumbnail, getPlatformLabel } from '@/lib/videoEmbed'
 
 type Song = {
@@ -117,6 +116,17 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
     if (nextInSong) return nextInSong
     const nextSong = songSlides[current.songIdx + 1]
     return nextSong?.slides[0] ?? null
+  })()
+
+  const projectedSermonDataUrl = (() => {
+    if (!projectedSermonLabel) return null
+    for (const sermon of sermons) {
+      const pages = sermonPagesMap[sermon.id] ?? []
+      for (let i = 0; i < pages.length; i++) {
+        if (`${sermon.title} — p.${i + 1}` === projectedSermonLabel) return pages[i]
+      }
+    }
+    return null
   })()
 
   // Lignes effectives (avec override éventuel)
@@ -891,13 +901,31 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
               {/* Diapo courante */}
               <div>
                 <p className="font-sans text-[10px] uppercase tracking-widest text-white/30 mb-2">En cours</p>
-                <SlidePreview slide={currentSlide} lines={currentSlide ? getLines(current.songIdx, current.slideIdx, currentSlide) : []} size="lg" />
+                {projectedSermonDataUrl ? (
+                  <div className="rounded-xl border border-purple-500/40 aspect-video overflow-hidden relative">
+                    <Image src={projectedSermonDataUrl} alt={projectedSermonLabel ?? ''} fill unoptimized className="object-contain bg-white" />
+                  </div>
+                ) : projectedAnnouncementId ? (() => {
+                  const ann = visibleAnnouncements.find(a => a.id === projectedAnnouncementId)
+                  if (!ann) return <SlidePreview slide={null} lines={[]} size="lg" />
+                  const eff = getEffectiveAnn(ann)
+                  return (
+                    <div className="bg-black rounded-xl border border-amber-500/40 aspect-video flex flex-col items-center justify-center px-4 py-5 relative overflow-hidden">
+                      {ann.image_url && <Image src={ann.image_url} alt="" fill sizes="300px" className="object-cover opacity-20" />}
+                      {eff.title && <p className="text-amber-400/70 text-[9px] uppercase tracking-widest mb-2 relative z-10 text-center truncate w-full">{eff.title}</p>}
+                      {eff.body.split('\n').slice(0, 3).map((line, i) => (
+                        <p key={i} className="text-white text-sm leading-snug text-center font-sans font-semibold relative z-10 truncate w-full">{line}</p>
+                      ))}
+                    </div>
+                  )
+                })() : (
+                  <SlidePreview slide={currentSlide} lines={currentSlide ? getLines(current.songIdx, current.slideIdx, currentSlide) : []} size="lg" />
+                )}
               </div>
               {/* Diapo suivante */}
               <div>
                 <p className="font-sans text-[10px] uppercase tracking-widest text-white/30 mb-2">Suivante</p>
                 <SlidePreview slide={nextSlide} lines={nextSlide ? (() => {
-                  // Trouver l'index de nextSlide
                   const nextIdx = current.slideIdx + 1 < (currentSong?.slides.length ?? 0)
                     ? { si: current.songIdx, di: current.slideIdx + 1 }
                     : { si: current.songIdx + 1, di: 0 }
@@ -991,64 +1019,6 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
             )}
           </div>
 
-          {/* Annonces */}
-          {visibleAnnouncements.length > 0 && (
-            <div className="border border-white/10 rounded-xl p-3 space-y-2">
-              <p className="font-sans text-[10px] uppercase tracking-widest text-white/30">Annonces</p>
-              <div className="space-y-1">
-                {visibleAnnouncements.map(ann => {
-                  const isActive = projectedAnnouncementId === ann.id
-                  return (
-                    <button
-                      key={ann.id}
-                      onClick={() => isActive ? clearAnnouncement() : projectAnnouncement(ann)}
-                      className={`w-full text-left px-3 py-2 rounded-lg border transition-all ${
-                        isActive
-                          ? 'border-amber-400/60 bg-amber-500/20 text-white'
-                          : 'border-white/10 hover:border-white/30 bg-white/5 text-white/70 hover:text-white'
-                      }`}
-                    >
-                      {ann.title && (
-                        <p className="text-[9px] uppercase tracking-widest text-white/40 leading-none mb-0.5">{ann.title}</p>
-                      )}
-                      <p className="font-sans text-xs leading-snug truncate">{ann.body}</p>
-                    </button>
-                  )
-                })}
-              </div>
-              {projectedAnnouncementId && (() => {
-                const ann = visibleAnnouncements.find(a => a.id === projectedAnnouncementId)
-                return (
-                  <div className="space-y-1">
-                    {ann?.video_url && (
-                      <button
-                        onClick={() => projectVideo({ id: ann.id + '-video', title: ann.title, url: ann.video_url!, order_index: 0 })}
-                        className="w-full py-1.5 bg-blue-500/80 hover:bg-blue-500 rounded-lg font-sans text-xs font-semibold text-white transition-colors"
-                      >
-                        ▶ Lancer la vidéo
-                      </button>
-                    )}
-                    <button
-                      onClick={clearAnnouncement}
-                      className="w-full py-1.5 bg-amber-500/80 hover:bg-amber-500 rounded-lg font-sans text-xs font-semibold text-white transition-colors"
-                    >
-                      ✕ Effacer l'annonce
-                    </button>
-                  </div>
-                )
-              })()}
-            </div>
-          )}
-
-          {/* Prédication PDF */}
-          {sermons.length > 0 && (
-            <SermonPdfPanel
-              sermons={sermons}
-              onProjectPage={projectSermonPage}
-              projectedLabel={projectedSermonLabel}
-              onClear={clearSermonPage}
-            />
-          )}
 
           {/* Médias */}
           {mediaFiles.length > 0 && (
