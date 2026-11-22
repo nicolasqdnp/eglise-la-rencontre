@@ -94,6 +94,9 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
   const [projectedAnnouncementId, setProjectedAnnouncementId] = useState<string | null>(null)
   // Vidéo projetée (id)
   const [projectedVideoId, setProjectedVideoId] = useState<string | null>(null)
+  // Pages PDF de prédication rendues pour la grille principale (sermonId → data URLs)
+  const [sermonPagesMap, setSermonPagesMap] = useState<Record<string, string[]>>({})
+  const sermonRenderRef = useRef<Record<string, boolean>>({})
 
   const allSongs   = [...songs, ...extraSongs].filter(s => !removedSongIds.has(s.planSongId))
   const visibleAnnouncements = announcements.filter(a => !removedAnnIds.has(a.id))
@@ -225,6 +228,35 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
     supabase.from('media_files').select('id, name, url').eq('type', 'image').order('created_at', { ascending: false })
       .then(({ data }) => { if (data) setMediaFiles(data) })
   }, [])
+
+  // Rendu PDF des sermons pour la grille principale
+  useEffect(() => {
+    if (sermons.length === 0) return
+    for (const sermon of sermons) {
+      if (sermonPagesMap[sermon.id] || sermonRenderRef.current[sermon.id]) continue
+      sermonRenderRef.current[sermon.id] = true
+      ;(async (s: typeof sermon) => {
+        try {
+          const pdfjsLib = await import('pdfjs-dist')
+          pdfjsLib.GlobalWorkerOptions.workerSrc =
+            `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
+          const pdf = await pdfjsLib.getDocument({ url: s.url, withCredentials: false }).promise
+          const urls: string[] = []
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i)
+            const viewport = page.getViewport({ scale: 1.5 })
+            const canvas = document.createElement('canvas')
+            canvas.width = viewport.width
+            canvas.height = viewport.height
+            await page.render({ canvasContext: canvas.getContext('2d')!, viewport, canvas }).promise
+            urls.push(canvas.toDataURL('image/jpeg', 0.85))
+            setSermonPagesMap(prev => ({ ...prev, [s.id]: [...urls] }))
+          }
+        } catch {}
+      })(sermon)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sermons])
 
   // BroadcastChannel
   useEffect(() => {
@@ -604,6 +636,11 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
 
   // Scroll vers la diapo active
   const activeRef = useRef<HTMLElement | null>(null)
+  // Refs de navigation rapide par section dans la grille
+  const videosSectionRef        = useRef<HTMLDivElement | null>(null)
+  const announcementsSectionRef = useRef<HTMLDivElement | null>(null)
+  const sermonsSectionRef       = useRef<HTMLDivElement | null>(null)
+  const chantsSectionRef        = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     activeRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [current])
@@ -704,6 +741,42 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
         {/* Panneau gauche */}
         <div className="w-80 shrink-0 border-r border-white/10 overflow-y-auto">
         <div className="flex flex-col gap-3 p-4">
+
+          {/* ── Navigation rapide par section ── */}
+          <div className="flex flex-wrap gap-1.5">
+            {allSongs.length > 0 && (
+              <button
+                onClick={() => chantsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                className="px-2 py-1 rounded-md bg-teal/20 hover:bg-teal/40 font-sans text-[10px] text-teal transition-colors"
+              >
+                ♪ Chants
+              </button>
+            )}
+            {sermons.length > 0 && (
+              <button
+                onClick={() => sermonsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                className="px-2 py-1 rounded-md bg-purple-500/20 hover:bg-purple-500/40 font-sans text-[10px] text-purple-300 transition-colors"
+              >
+                📖 Prédication
+              </button>
+            )}
+            {visibleAnnouncements.length > 0 && (
+              <button
+                onClick={() => announcementsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                className="px-2 py-1 rounded-md bg-amber-500/20 hover:bg-amber-500/40 font-sans text-[10px] text-amber-300 transition-colors"
+              >
+                ♦ Annonces
+              </button>
+            )}
+            {videos.length > 0 && (
+              <button
+                onClick={() => videosSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                className="px-2 py-1 rounded-md bg-blue-500/20 hover:bg-blue-500/40 font-sans text-[10px] text-blue-300 transition-colors"
+              >
+                ▶ Vidéos
+              </button>
+            )}
+          </div>
 
           {showAddSong ? (
             /* ── Ajout d'un chant à la volée ── */
@@ -1121,7 +1194,7 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
 
           {/* ── Section Vidéos ── */}
           {videos.length > 0 && (
-            <div className="mb-6">
+            <div ref={videosSectionRef} className="mb-6">
               <div className="flex items-center gap-3 mb-3">
                 <span className="font-sans text-xs text-blue-400/50 w-4">▶</span>
                 <p className="font-display text-sm text-blue-400/70 font-light">Vidéos</p>
@@ -1181,7 +1254,7 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
 
           {/* ── Section Annonces ── */}
           {visibleAnnouncements.length > 0 && (
-            <div className="mb-6">
+            <div ref={announcementsSectionRef} className="mb-6">
               <div className="flex items-center gap-3 mb-3">
                 <span className="font-sans text-xs text-amber-400/50 w-4">♦</span>
                 <p className="font-display text-sm text-amber-400/70 font-light">Annonces</p>
@@ -1267,7 +1340,79 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
             </div>
           )}
 
+          {/* ── Section Prédication ── */}
+          {sermons.length > 0 && (
+            <div ref={sermonsSectionRef} className="mb-6">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="font-sans text-xs text-purple-400/50 w-4">📖</span>
+                <p className="font-display text-sm text-purple-400/70 font-light">Prédication</p>
+                <div className="flex-1 h-px bg-white/10" />
+              </div>
+              {sermons.map(sermon => {
+                const pages = sermonPagesMap[sermon.id] ?? []
+                return (
+                  <div key={sermon.id} className="mb-4">
+                    {sermons.length > 1 && (
+                      <p className="pl-7 font-sans text-xs text-white/40 mb-2 truncate">{sermon.title}</p>
+                    )}
+                    {pages.length === 0 ? (
+                      <div className="pl-7 flex items-center gap-2 py-2">
+                        <svg className="animate-spin w-3.5 h-3.5 text-white/30" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                        </svg>
+                        <span className="text-white/30 text-xs font-sans">Chargement du PDF…</span>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 pl-7">
+                        {pages.map((dataUrl, i) => {
+                          const label = `${sermon.title} — p.${i + 1}`
+                          const isActive = projectedSermonLabel === label
+                          return (
+                            <div
+                              key={i}
+                              onClick={() => isActive ? clearSermonPage() : projectSermonPage(dataUrl, label)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={e => e.key === 'Enter' && (isActive ? clearSermonPage() : projectSermonPage(dataUrl, label))}
+                              className={`relative rounded-lg border-2 transition-all overflow-hidden aspect-video cursor-pointer ${
+                                isActive
+                                  ? 'border-purple-400 ring-1 ring-purple-400/50'
+                                  : 'border-purple-500/30 bg-white/5 hover:bg-white/10 hover:border-purple-400/50'
+                              }`}
+                            >
+                              <Image src={dataUrl} alt={`Page ${i + 1}`} fill unoptimized className="object-contain bg-white" />
+                              <span className="absolute bottom-0.5 right-1 text-[9px] text-white/70 font-sans bg-black/60 rounded px-1 z-10">
+                                {i + 1}
+                              </span>
+                              {isActive && (
+                                <div className="absolute inset-0 bg-purple-500/30 flex items-center justify-center z-10">
+                                  <span className="text-white text-lg">✓</span>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+              {projectedSermonLabel && (
+                <div className="mt-2 pl-7">
+                  <button
+                    onClick={clearSermonPage}
+                    className="px-3 py-1.5 bg-purple-500/80 hover:bg-purple-500 rounded-lg font-sans text-xs font-semibold text-white transition-colors"
+                  >
+                    ✕ Effacer la prédication
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ── Section Chants ── */}
+          <div ref={chantsSectionRef}>
           {songSlides.map((ss, si) => {
             if (ss.slides.length === 0) return null
             return (
@@ -1350,6 +1495,7 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
               </div>
             )
           })}
+          </div>{/* fin chantsSectionRef */}
         </div>
       </div>
     </div>
