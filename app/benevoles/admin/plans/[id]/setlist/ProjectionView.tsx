@@ -259,34 +259,6 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
       sermonRenderRef.current[sermon.id] = true
       ;(async (s: typeof sermon) => {
         try {
-          // Polyfill Uint8Array hex/base64 methods requis par pdfjs-dist v5 (Chrome < 121, Safari < 17.4)
-          const u8proto = Uint8Array.prototype as unknown as Record<string, unknown>
-          const u8ctor  = Uint8Array as unknown as Record<string, unknown>
-          if (!u8proto.toHex) {
-            Object.defineProperty(Uint8Array.prototype, 'toHex', {
-              value(this: Uint8Array) { return Array.from(this, b => b.toString(16).padStart(2, '0')).join('') },
-              writable: true, configurable: true,
-            })
-          }
-          if (!u8ctor.fromHex) {
-            Object.defineProperty(Uint8Array, 'fromHex', {
-              value(hex: string) { const a = new Uint8Array(hex.length >> 1); for (let i = 0; i < a.length; i++) a[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16); return a },
-              writable: true, configurable: true,
-            })
-          }
-          if (!u8proto.toBase64) {
-            Object.defineProperty(Uint8Array.prototype, 'toBase64', {
-              value(this: Uint8Array) { return btoa(String.fromCharCode(...this)) },
-              writable: true, configurable: true,
-            })
-          }
-          if (!u8ctor.fromBase64) {
-            Object.defineProperty(Uint8Array, 'fromBase64', {
-              value(b64: string) { const s = atob(b64); const a = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a },
-              writable: true, configurable: true,
-            })
-          }
-
           const pdfjsLib = await import('pdfjs-dist')
           pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
           const pdf = await pdfjsLib.getDocument({ url: s.url, withCredentials: false }).promise
@@ -297,7 +269,7 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
             const canvas = document.createElement('canvas')
             canvas.width = viewport.width
             canvas.height = viewport.height
-            await page.render({ canvasContext: canvas.getContext('2d')!, viewport, canvas }).promise
+            await page.render({ canvasContext: canvas.getContext('2d')!, viewport }).promise
             urls.push(canvas.toDataURL('image/jpeg', 0.85))
             setSermonPagesMap(prev => ({ ...prev, [s.id]: [...urls] }))
           }
