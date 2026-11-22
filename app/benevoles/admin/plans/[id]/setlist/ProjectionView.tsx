@@ -129,6 +129,17 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
     return null
   })()
 
+  const projectedSermonNextDataUrl = (() => {
+    if (!projectedSermonLabel) return null
+    for (const sermon of sermons) {
+      const pages = sermonPagesMap[sermon.id] ?? []
+      for (let i = 0; i < pages.length; i++) {
+        if (`${sermon.title} — p.${i + 1}` === projectedSermonLabel) return pages[i + 1] ?? null
+      }
+    }
+    return null
+  })()
+
   // Lignes effectives (avec override éventuel)
   function getLines(si: number, di: number, slide: Slide): string[] {
     return slideOverrides.get(slideKey(si, di)) ?? slide.lines
@@ -925,12 +936,22 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
               {/* Diapo suivante */}
               <div>
                 <p className="font-sans text-[10px] uppercase tracking-widest text-white/30 mb-2">Suivante</p>
-                <SlidePreview slide={nextSlide} lines={nextSlide ? (() => {
-                  const nextIdx = current.slideIdx + 1 < (currentSong?.slides.length ?? 0)
-                    ? { si: current.songIdx, di: current.slideIdx + 1 }
-                    : { si: current.songIdx + 1, di: 0 }
-                  return getLines(nextIdx.si, nextIdx.di, nextSlide)
-                })() : []} size="sm" dim />
+                {projectedSermonDataUrl ? (
+                  projectedSermonNextDataUrl ? (
+                    <div className="rounded-xl border border-purple-500/20 aspect-video overflow-hidden relative opacity-50">
+                      <Image src={projectedSermonNextDataUrl} alt="" fill unoptimized className="object-contain bg-white" />
+                    </div>
+                  ) : (
+                    <SlidePreview slide={null} lines={[]} size="sm" dim />
+                  )
+                ) : (
+                  <SlidePreview slide={nextSlide} lines={nextSlide ? (() => {
+                    const nextIdx = current.slideIdx + 1 < (currentSong?.slides.length ?? 0)
+                      ? { si: current.songIdx, di: current.slideIdx + 1 }
+                      : { si: current.songIdx + 1, di: 0 }
+                    return getLines(nextIdx.si, nextIdx.di, nextSlide)
+                  })() : []} size="sm" dim />
+                )}
               </div>
             </>
           )}
