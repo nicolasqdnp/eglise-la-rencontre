@@ -570,6 +570,14 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
   projectedAnnIdRef.current          = projectedAnnouncementId
   const projectAnnouncementRef       = useRef(projectAnnouncement)
   projectAnnouncementRef.current     = projectAnnouncement
+  const sermonsRef                   = useRef(sermons)
+  sermonsRef.current                 = sermons
+  const sermonPagesMapRef            = useRef(sermonPagesMap)
+  sermonPagesMapRef.current          = sermonPagesMap
+  const projectedSermonLabelRef      = useRef(projectedSermonLabel)
+  projectedSermonLabelRef.current    = projectedSermonLabel
+  const projectSermonPageRef         = useRef(projectSermonPage)
+  projectSermonPageRef.current       = projectSermonPage
 
   // Overlays "durs" qui suspendent le timer (message libre, verset, image/PDF, décompte).
   // Les annonces NE suspendent PAS le timer : elles participent au cycle.
@@ -590,6 +598,27 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
     if (!autoAdvanceSecs) return
     const id = setInterval(() => {
       if (hardOverlayRef.current) return // message / verset / image / décompte → suspendu
+
+      // Cycle dans les pages de prédication
+      const sermonLabel = projectedSermonLabelRef.current
+      if (sermonLabel) {
+        const sermonsList = sermonsRef.current
+        const pagesMap    = sermonPagesMapRef.current
+        for (const sermon of sermonsList) {
+          const pages = pagesMap[sermon.id] ?? []
+          for (let i = 0; i < pages.length; i++) {
+            if (`${sermon.title} — p.${i + 1}` === sermonLabel) {
+              if (i + 1 < pages.length) {
+                projectSermonPageRef.current(pages[i + 1], `${sermon.title} — p.${i + 2}`)
+              } else if (autoLoopRef.current) {
+                projectSermonPageRef.current(pages[0], `${sermon.title} — p.1`)
+              }
+              return
+            }
+          }
+        }
+        return
+      }
 
       const annId = projectedAnnIdRef.current
       const anns  = announcementsRef.current
@@ -666,9 +695,22 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
     activeRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [current])
 
-  const isFirst = current.songIdx === 0 && current.slideIdx === 0
-  const isLast  = current.songIdx === allSongs.length - 1 &&
-                  current.slideIdx === (currentSong?.slides.length ?? 1) - 1
+  const isFirst = projectedSermonLabel
+    ? (() => {
+        const firstSermon = sermons[0]
+        if (!firstSermon) return true
+        return projectedSermonLabel === `${firstSermon.title} — p.1`
+      })()
+    : projectedAnnouncementId
+      ? visibleAnnouncements.findIndex(a => a.id === projectedAnnouncementId) === 0
+      : current.songIdx === 0 && current.slideIdx === 0
+
+  const isLast = projectedSermonLabel
+    ? !projectedSermonNextDataUrl
+    : projectedAnnouncementId
+      ? visibleAnnouncements.findIndex(a => a.id === projectedAnnouncementId) === visibleAnnouncements.length - 1
+      : current.songIdx === allSongs.length - 1 &&
+        current.slideIdx === (currentSong?.slides.length ?? 1) - 1
 
   return (
     <div className="fixed inset-0 z-50 bg-gray-950 flex flex-col text-white">
@@ -1123,10 +1165,25 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
           <div className="flex gap-2">
             <button
               onClick={() => {
-                if (current.slideIdx > 0) goto(current.songIdx, current.slideIdx - 1)
-                else if (current.songIdx > 0) {
-                  const prev = songSlides[current.songIdx - 1]
-                  goto(current.songIdx - 1, Math.max(0, prev.slides.length - 1))
+                if (projectedSermonLabel) {
+                  for (const sermon of sermons) {
+                    const pages = sermonPagesMap[sermon.id] ?? []
+                    for (let i = 0; i < pages.length; i++) {
+                      if (`${sermon.title} — p.${i + 1}` === projectedSermonLabel && i > 0) {
+                        projectSermonPage(pages[i - 1], `${sermon.title} — p.${i}`)
+                        return
+                      }
+                    }
+                  }
+                } else if (projectedAnnouncementId) {
+                  const idx = visibleAnnouncements.findIndex(a => a.id === projectedAnnouncementId)
+                  if (idx > 0) projectAnnouncement(visibleAnnouncements[idx - 1])
+                } else {
+                  if (current.slideIdx > 0) goto(current.songIdx, current.slideIdx - 1)
+                  else if (current.songIdx > 0) {
+                    const prev = songSlides[current.songIdx - 1]
+                    goto(current.songIdx - 1, Math.max(0, prev.slides.length - 1))
+                  }
                 }
               }}
               disabled={isFirst}
@@ -1136,9 +1193,26 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
             </button>
             <button
               onClick={() => {
-                const nextInSong = currentSong?.slides[current.slideIdx + 1]
-                if (nextInSong) goto(current.songIdx, current.slideIdx + 1)
-                else if (current.songIdx < allSongs.length - 1) goto(current.songIdx + 1, 0)
+                if (projectedSermonLabel) {
+                  for (const sermon of sermons) {
+                    const pages = sermonPagesMap[sermon.id] ?? []
+                    for (let i = 0; i < pages.length; i++) {
+                      if (`${sermon.title} — p.${i + 1}` === projectedSermonLabel && i + 1 < pages.length) {
+                        projectSermonPage(pages[i + 1], `${sermon.title} — p.${i + 2}`)
+                        return
+                      }
+                    }
+                  }
+                } else if (projectedAnnouncementId) {
+                  const idx = visibleAnnouncements.findIndex(a => a.id === projectedAnnouncementId)
+                  if (idx >= 0 && idx < visibleAnnouncements.length - 1) {
+                    projectAnnouncement(visibleAnnouncements[idx + 1])
+                  }
+                } else {
+                  const nextInSong = currentSong?.slides[current.slideIdx + 1]
+                  if (nextInSong) goto(current.songIdx, current.slideIdx + 1)
+                  else if (current.songIdx < allSongs.length - 1) goto(current.songIdx + 1, 0)
+                }
               }}
               disabled={isLast}
               className="flex-1 py-2.5 bg-teal hover:bg-teal/80 disabled:opacity-25 rounded-xl font-sans text-sm font-semibold transition-colors"
