@@ -1192,60 +1192,157 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
         {/* Grille de toutes les diapos */}
         <div className="flex-1 overflow-y-auto p-4">
 
-          {/* ── Section Vidéos ── */}
-          {videos.length > 0 && (
-            <div ref={videosSectionRef} className="mb-6">
-              <div className="flex items-center gap-3 mb-3">
-                <span className="font-sans text-xs text-blue-400/50 w-4">▶</span>
-                <p className="font-display text-sm text-blue-400/70 font-light">Vidéos</p>
-                <div className="flex-1 h-px bg-white/10" />
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 pl-7">
-                {videos.map(video => {
-                  const isActive = projectedVideoId === video.id
-                  const thumb    = getYoutubeThumbnail(video.url)
-                  const platform = getPlatformLabel(video.url)
-                  return (
-                    <div
-                      key={video.id}
-                      onClick={() => isActive ? clearVideo() : projectVideo(video)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={e => e.key === 'Enter' && (isActive ? clearVideo() : projectVideo(video))}
-                      className={`group relative rounded-lg border-2 transition-all overflow-hidden aspect-video flex flex-col items-center justify-center cursor-pointer ${
-                        isActive
-                          ? 'border-blue-400 ring-1 ring-blue-400/50'
-                          : 'border-blue-500/30 bg-white/5 hover:bg-white/10 hover:border-blue-400/50'
-                      }`}
-                    >
-                      {thumb ? (
-                        <Image src={thumb} alt="" fill sizes="(max-width:640px) 33vw, 25vw" className="object-cover opacity-60 group-hover:opacity-80 transition-opacity" />
-                      ) : (
-                        <div className="absolute inset-0 bg-blue-900/30" />
-                      )}
-                      <div className="relative z-10 text-center px-1.5">
-                        <span className="text-white text-xl drop-shadow-lg">▶</span>
-                        {video.title && (
-                          <p className="text-white/90 text-[9px] uppercase tracking-wide leading-tight mt-1 truncate w-full drop-shadow">{video.title}</p>
+          {/* ── Section Chants ── */}
+          <div ref={chantsSectionRef}>
+          {songSlides.map((ss, si) => {
+            if (ss.slides.length === 0) return null
+            return (
+              <div key={si} className="mb-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="font-sans text-xs text-white/30 tabular-nums w-4">{si + 1}</span>
+                  <p className="font-display text-sm text-white/60 font-light">{ss.title}</p>
+                  <div className="flex-1 h-px bg-white/10" />
+                  <button
+                    onClick={() => removeSong(allSongs[si].planSongId)}
+                    className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold text-white/40 hover:text-white hover:bg-red-500/60 transition-all leading-none"
+                    title="Supprimer ce chant du plan"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 pl-7">
+                  {ss.slides.map((slide, di) => {
+                    const isActive  = current.songIdx === si && current.slideIdx === di
+                    const key       = slideKey(si, di)
+                    const hasOverride = slideOverrides.has(key)
+                    const lines     = getLines(si, di, slide)
+
+                    return (
+                      <div
+                        key={di}
+                        ref={isActive ? (el => { activeRef.current = el }) : null}
+                        onClick={() => goto(si, di)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={e => e.key === 'Enter' && goto(si, di)}
+                        className={`group relative rounded-lg border-2 transition-all text-left overflow-hidden aspect-video flex flex-col items-center justify-center px-2 py-2 cursor-pointer ${
+                          isActive
+                            ? 'border-teal bg-teal/10 ring-1 ring-teal/50'
+                            : `${slide.isBlank ? 'border-white/10 hover:border-white/30' : sectionBorder(slide.section)} bg-white/5 hover:bg-white/10`
+                        }`}
+                      >
+                        {slide.isBlank ? (
+                          <span className="text-white/20 text-base">⬛</span>
+                        ) : (
+                          <>
+                            {slide.section && (
+                              <p className="text-white/30 text-[9px] uppercase tracking-wider leading-none mb-1 text-center truncate w-full">
+                                {slide.section}
+                              </p>
+                            )}
+                            {lines.map((line, li) => (
+                              <p key={li} className={`text-[11px] leading-tight text-center truncate w-full ${hasOverride ? 'text-amber-300' : 'text-white'}`}>
+                                {line}
+                              </p>
+                            ))}
+                          </>
                         )}
-                        {platform && (
-                          <p className="text-white/40 text-[8px] font-sans mt-0.5">{platform}</p>
+
+                        {/* Indicateur diapo active */}
+                        {isActive && (
+                          <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-teal" />
+                        )}
+
+                        {/* Indicateur override */}
+                        {hasOverride && (
+                          <span className="absolute bottom-1 right-1 text-[8px] text-amber-400" title="Modifié">✏️</span>
+                        )}
+
+                        {/* Bouton édition (hover) — visible uniquement sur les diapos non-blank */}
+                        {!slide.isBlank && (
+                          <button
+                            onClick={e => { e.stopPropagation(); openEdit(si, di, slide) }}
+                            className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 bg-black/70 hover:bg-teal/80 rounded p-0.5 transition-all text-[10px] leading-none"
+                            title="Modifier les paroles"
+                          >
+                            ✏️
+                          </button>
                         )}
                       </div>
-                      {isActive && (
-                        <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-blue-400" />
-                      )}
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
-              {projectedVideoId && (
+            )
+          })}
+          </div>{/* fin chantsSectionRef */}
+
+          {/* ── Section Prédication ── */}
+          {sermons.length > 0 && (
+            <div ref={sermonsSectionRef} className="mb-6">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="font-sans text-xs text-purple-400/50 w-4">📖</span>
+                <p className="font-display text-sm text-purple-400/70 font-light">Prédication</p>
+                <div className="flex-1 h-px bg-white/10" />
+              </div>
+              {sermons.map(sermon => {
+                const pages = sermonPagesMap[sermon.id] ?? []
+                return (
+                  <div key={sermon.id} className="mb-4">
+                    {sermons.length > 1 && (
+                      <p className="pl-7 font-sans text-xs text-white/40 mb-2 truncate">{sermon.title}</p>
+                    )}
+                    {pages.length === 0 ? (
+                      <div className="pl-7 flex items-center gap-2 py-2">
+                        <svg className="animate-spin w-3.5 h-3.5 text-white/30" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                        </svg>
+                        <span className="text-white/30 text-xs font-sans">Chargement du PDF…</span>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 pl-7">
+                        {pages.map((dataUrl, i) => {
+                          const label = `${sermon.title} — p.${i + 1}`
+                          const isActive = projectedSermonLabel === label
+                          return (
+                            <div
+                              key={i}
+                              onClick={() => isActive ? clearSermonPage() : projectSermonPage(dataUrl, label)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={e => e.key === 'Enter' && (isActive ? clearSermonPage() : projectSermonPage(dataUrl, label))}
+                              className={`relative rounded-lg border-2 transition-all overflow-hidden aspect-video cursor-pointer ${
+                                isActive
+                                  ? 'border-purple-400 ring-1 ring-purple-400/50'
+                                  : 'border-purple-500/30 bg-white/5 hover:bg-white/10 hover:border-purple-400/50'
+                              }`}
+                            >
+                              <Image src={dataUrl} alt={`Page ${i + 1}`} fill unoptimized className="object-contain bg-white" />
+                              <span className="absolute bottom-0.5 right-1 text-[9px] text-white/70 font-sans bg-black/60 rounded px-1 z-10">
+                                {i + 1}
+                              </span>
+                              {isActive && (
+                                <div className="absolute inset-0 bg-purple-500/30 flex items-center justify-center z-10">
+                                  <span className="text-white text-lg">✓</span>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+              {projectedSermonLabel && (
                 <div className="mt-2 pl-7">
                   <button
-                    onClick={clearVideo}
-                    className="px-3 py-1.5 bg-blue-500/80 hover:bg-blue-500 rounded-lg font-sans text-xs font-semibold text-white transition-colors"
+                    onClick={clearSermonPage}
+                    className="px-3 py-1.5 bg-purple-500/80 hover:bg-purple-500 rounded-lg font-sans text-xs font-semibold text-white transition-colors"
                   >
-                    ✕ Arrêter la vidéo
+                    ✕ Effacer la prédication
                   </button>
                 </div>
               )}
@@ -1340,162 +1437,65 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
             </div>
           )}
 
-          {/* ── Section Prédication ── */}
-          {sermons.length > 0 && (
-            <div ref={sermonsSectionRef} className="mb-6">
+          {/* ── Section Vidéos ── */}
+          {videos.length > 0 && (
+            <div ref={videosSectionRef} className="mb-6">
               <div className="flex items-center gap-3 mb-3">
-                <span className="font-sans text-xs text-purple-400/50 w-4">📖</span>
-                <p className="font-display text-sm text-purple-400/70 font-light">Prédication</p>
+                <span className="font-sans text-xs text-blue-400/50 w-4">▶</span>
+                <p className="font-display text-sm text-blue-400/70 font-light">Vidéos</p>
                 <div className="flex-1 h-px bg-white/10" />
               </div>
-              {sermons.map(sermon => {
-                const pages = sermonPagesMap[sermon.id] ?? []
-                return (
-                  <div key={sermon.id} className="mb-4">
-                    {sermons.length > 1 && (
-                      <p className="pl-7 font-sans text-xs text-white/40 mb-2 truncate">{sermon.title}</p>
-                    )}
-                    {pages.length === 0 ? (
-                      <div className="pl-7 flex items-center gap-2 py-2">
-                        <svg className="animate-spin w-3.5 h-3.5 text-white/30" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                        </svg>
-                        <span className="text-white/30 text-xs font-sans">Chargement du PDF…</span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 pl-7">
+                {videos.map(video => {
+                  const isActive = projectedVideoId === video.id
+                  const thumb    = getYoutubeThumbnail(video.url)
+                  const platform = getPlatformLabel(video.url)
+                  return (
+                    <div
+                      key={video.id}
+                      onClick={() => isActive ? clearVideo() : projectVideo(video)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={e => e.key === 'Enter' && (isActive ? clearVideo() : projectVideo(video))}
+                      className={`group relative rounded-lg border-2 transition-all overflow-hidden aspect-video flex flex-col items-center justify-center cursor-pointer ${
+                        isActive
+                          ? 'border-blue-400 ring-1 ring-blue-400/50'
+                          : 'border-blue-500/30 bg-white/5 hover:bg-white/10 hover:border-blue-400/50'
+                      }`}
+                    >
+                      {thumb ? (
+                        <Image src={thumb} alt="" fill sizes="(max-width:640px) 33vw, 25vw" className="object-cover opacity-60 group-hover:opacity-80 transition-opacity" />
+                      ) : (
+                        <div className="absolute inset-0 bg-blue-900/30" />
+                      )}
+                      <div className="relative z-10 text-center px-1.5">
+                        <span className="text-white text-xl drop-shadow-lg">▶</span>
+                        {video.title && (
+                          <p className="text-white/90 text-[9px] uppercase tracking-wide leading-tight mt-1 truncate w-full drop-shadow">{video.title}</p>
+                        )}
+                        {platform && (
+                          <p className="text-white/40 text-[8px] font-sans mt-0.5">{platform}</p>
+                        )}
                       </div>
-                    ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 pl-7">
-                        {pages.map((dataUrl, i) => {
-                          const label = `${sermon.title} — p.${i + 1}`
-                          const isActive = projectedSermonLabel === label
-                          return (
-                            <div
-                              key={i}
-                              onClick={() => isActive ? clearSermonPage() : projectSermonPage(dataUrl, label)}
-                              role="button"
-                              tabIndex={0}
-                              onKeyDown={e => e.key === 'Enter' && (isActive ? clearSermonPage() : projectSermonPage(dataUrl, label))}
-                              className={`relative rounded-lg border-2 transition-all overflow-hidden aspect-video cursor-pointer ${
-                                isActive
-                                  ? 'border-purple-400 ring-1 ring-purple-400/50'
-                                  : 'border-purple-500/30 bg-white/5 hover:bg-white/10 hover:border-purple-400/50'
-                              }`}
-                            >
-                              <Image src={dataUrl} alt={`Page ${i + 1}`} fill unoptimized className="object-contain bg-white" />
-                              <span className="absolute bottom-0.5 right-1 text-[9px] text-white/70 font-sans bg-black/60 rounded px-1 z-10">
-                                {i + 1}
-                              </span>
-                              {isActive && (
-                                <div className="absolute inset-0 bg-purple-500/30 flex items-center justify-center z-10">
-                                  <span className="text-white text-lg">✓</span>
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-              {projectedSermonLabel && (
+                      {isActive && (
+                        <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-blue-400" />
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              {projectedVideoId && (
                 <div className="mt-2 pl-7">
                   <button
-                    onClick={clearSermonPage}
-                    className="px-3 py-1.5 bg-purple-500/80 hover:bg-purple-500 rounded-lg font-sans text-xs font-semibold text-white transition-colors"
+                    onClick={clearVideo}
+                    className="px-3 py-1.5 bg-blue-500/80 hover:bg-blue-500 rounded-lg font-sans text-xs font-semibold text-white transition-colors"
                   >
-                    ✕ Effacer la prédication
+                    ✕ Arrêter la vidéo
                   </button>
                 </div>
               )}
             </div>
           )}
-
-          {/* ── Section Chants ── */}
-          <div ref={chantsSectionRef}>
-          {songSlides.map((ss, si) => {
-            if (ss.slides.length === 0) return null
-            return (
-              <div key={si} className="mb-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="font-sans text-xs text-white/30 tabular-nums w-4">{si + 1}</span>
-                  <p className="font-display text-sm text-white/60 font-light">{ss.title}</p>
-                  <div className="flex-1 h-px bg-white/10" />
-                  <button
-                    onClick={() => removeSong(allSongs[si].planSongId)}
-                    className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold text-white/40 hover:text-white hover:bg-red-500/60 transition-all leading-none"
-                    title="Supprimer ce chant du plan"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 pl-7">
-                  {ss.slides.map((slide, di) => {
-                    const isActive  = current.songIdx === si && current.slideIdx === di
-                    const key       = slideKey(si, di)
-                    const hasOverride = slideOverrides.has(key)
-                    const lines     = getLines(si, di, slide)
-
-                    return (
-                      <div
-                        key={di}
-                        ref={isActive ? (el => { activeRef.current = el }) : null}
-                        onClick={() => goto(si, di)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={e => e.key === 'Enter' && goto(si, di)}
-                        className={`group relative rounded-lg border-2 transition-all text-left overflow-hidden aspect-video flex flex-col items-center justify-center px-2 py-2 cursor-pointer ${
-                          isActive
-                            ? 'border-teal bg-teal/10 ring-1 ring-teal/50'
-                            : `${slide.isBlank ? 'border-white/10 hover:border-white/30' : sectionBorder(slide.section)} bg-white/5 hover:bg-white/10`
-                        }`}
-                      >
-                        {slide.isBlank ? (
-                          <span className="text-white/20 text-base">⬛</span>
-                        ) : (
-                          <>
-                            {slide.section && (
-                              <p className="text-white/30 text-[9px] uppercase tracking-wider leading-none mb-1 text-center truncate w-full">
-                                {slide.section}
-                              </p>
-                            )}
-                            {lines.map((line, li) => (
-                              <p key={li} className={`text-[11px] leading-tight text-center truncate w-full ${hasOverride ? 'text-amber-300' : 'text-white'}`}>
-                                {line}
-                              </p>
-                            ))}
-                          </>
-                        )}
-
-                        {/* Indicateur diapo active */}
-                        {isActive && (
-                          <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-teal" />
-                        )}
-
-                        {/* Indicateur override */}
-                        {hasOverride && (
-                          <span className="absolute bottom-1 right-1 text-[8px] text-amber-400" title="Modifié">✏️</span>
-                        )}
-
-                        {/* Bouton édition (hover) — visible uniquement sur les diapos non-blank */}
-                        {!slide.isBlank && (
-                          <button
-                            onClick={e => { e.stopPropagation(); openEdit(si, di, slide) }}
-                            className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 bg-black/70 hover:bg-teal/80 rounded p-0.5 transition-all text-[10px] leading-none"
-                            title="Modifier les paroles"
-                          >
-                            ✏️
-                          </button>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })}
-          </div>{/* fin chantsSectionRef */}
         </div>
       </div>
     </div>
