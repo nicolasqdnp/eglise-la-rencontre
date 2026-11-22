@@ -267,9 +267,14 @@ export default function RegieClient() {
         )}
 
         {!serverOnline && (
-          <p className="text-xs text-gray-500 mt-2">
-            Serveur introuvable sur <code className="text-gray-400">{atemUrl}</code> — vérifie l&apos;IP du Mac mini via ⚙
-          </p>
+          <div className="mt-2 space-y-1">
+            <p className="text-xs text-gray-500">
+              Serveur introuvable sur <code className="text-gray-400">{atemUrl}</code> — vérifie l&apos;IP du Mac via ⚙
+            </p>
+            <p className="text-xs text-gray-600">
+              Lance d&apos;abord : <code className="text-gray-500">node atem-server.mjs &lt;IP_ATEM&gt;</code>
+            </p>
+          </div>
         )}
 
         {/* Onglets */}
