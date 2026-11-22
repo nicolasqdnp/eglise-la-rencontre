@@ -32,9 +32,7 @@ export function SermonPdfPanel({ sermons, onProjectPage, projectedLabel, onClear
       try {
         // Chargement dynamique de pdfjs-dist pour éviter les problèmes SSR
         const pdfjsLib = await import('pdfjs-dist')
-        // Worker via CDN pour éviter les problèmes de bundling Next.js
-        pdfjsLib.GlobalWorkerOptions.workerSrc =
-          `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
 
         const task = pdfjsLib.getDocument({ url: activeSermon.url, withCredentials: false })
         const pdf  = await task.promise

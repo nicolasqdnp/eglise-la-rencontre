@@ -95,6 +95,7 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
   const [projectedVideoId, setProjectedVideoId] = useState<string | null>(null)
   // Pages PDF de prédication rendues pour la grille principale (sermonId → data URLs)
   const [sermonPagesMap, setSermonPagesMap] = useState<Record<string, string[]>>({})
+  const [sermonErrorMap,  setSermonErrorMap]  = useState<Record<string, string>>({})
   const sermonRenderRef = useRef<Record<string, boolean>>({})
 
   const allSongs   = [...songs, ...extraSongs].filter(s => !removedSongIds.has(s.planSongId))
@@ -259,8 +260,7 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
       ;(async (s: typeof sermon) => {
         try {
           const pdfjsLib = await import('pdfjs-dist')
-          pdfjsLib.GlobalWorkerOptions.workerSrc =
-            `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
+          pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
           const pdf = await pdfjsLib.getDocument({ url: s.url, withCredentials: false }).promise
           const urls: string[] = []
           for (let i = 1; i <= pdf.numPages; i++) {
@@ -273,7 +273,9 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
             urls.push(canvas.toDataURL('image/jpeg', 0.85))
             setSermonPagesMap(prev => ({ ...prev, [s.id]: [...urls] }))
           }
-        } catch {}
+        } catch (err) {
+          setSermonErrorMap(prev => ({ ...prev, [s.id]: err instanceof Error ? err.message : 'Erreur inconnue' }))
+        }
       })(sermon)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1360,11 +1362,17 @@ export function ProjectionView({ planId, songs, announcements, sermons, videos, 
                     )}
                     {pages.length === 0 ? (
                       <div className="pl-7 flex items-center gap-2 py-2">
-                        <svg className="animate-spin w-3.5 h-3.5 text-white/30" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                        </svg>
-                        <span className="text-white/30 text-xs font-sans">Chargement du PDF…</span>
+                        {sermonErrorMap[sermon.id] ? (
+                          <span className="text-red-400 text-xs font-sans">⚠ {sermonErrorMap[sermon.id]}</span>
+                        ) : (
+                          <>
+                            <svg className="animate-spin w-3.5 h-3.5 text-white/30" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                            </svg>
+                            <span className="text-white/30 text-xs font-sans">Chargement du PDF…</span>
+                          </>
+                        )}
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 pl-7">
